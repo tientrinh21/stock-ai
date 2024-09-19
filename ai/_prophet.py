@@ -11,9 +11,6 @@ def prophet_model(data):
 
 
 def prophet_predict(model, number_of_predict_data, data):
-    last_data = (
-        data.drop(columns=["Datetime", "SMA_20", "EMA_20"]).values[-1].reshape(1, 6)
-    )
     last_date = data["Datetime"].values[-1]
 
     future_dates = [last_date]
@@ -31,6 +28,5 @@ def prophet_predict(model, number_of_predict_data, data):
     predict_df = forecast[["ds", "yhat"]].rename(
         columns={"ds": "Datetime", "yhat": "Close"}
     )
-    predict_df.iloc[0] = last_data[0][3]
-    print(predict_df.head())
+    predict_df.iloc[0, 1] = data["Close"].values[-1]
     return predict_df
