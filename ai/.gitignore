@@ -1,0 +1,8 @@
+# environment variables
+.venv/
+.env
+
+# pycache
+__pycache__/
+
+*.csv
