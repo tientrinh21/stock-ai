@@ -26,7 +26,9 @@ def main():
     # sidebar for user input params
     st.sidebar.header("Chart Parameters ")
     ticker = st.sidebar.text_input("Ticker", "AAPL")
-    time_period = st.sidebar.selectbox("Time Period", ["1wk", "1mo", "1y", "max"])
+    time_period = st.sidebar.selectbox(
+        "Time Period", ["1wk", "1mo", "1y", "max"], index=3
+    )
     chart_type = st.sidebar.selectbox("Chart Type", ["Line", "Candlestick"])
     indicators = st.sidebar.multiselect("Technical Indicators", ["SMA 20", "EMA 20"])
 
