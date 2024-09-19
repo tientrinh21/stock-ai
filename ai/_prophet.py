@@ -1,4 +1,7 @@
+import numpy as np
 import pandas as pd
+
+np.float_ = np.float64
 from prophet import Prophet
 
 
