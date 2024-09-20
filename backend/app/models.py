@@ -1,30 +1,53 @@
-# app/models.py
+from sqlalchemy import (
+    Column,
+    Date,
+    Float,
+    Integer,
+    UniqueConstraint,
+)
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-
-from .database import Base
-
-
-class Author(Base):
-    __tablename__ = "authors"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    bio = Column(Text)
-    country = Column(String(100))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    books = relationship("Book", back_populates="author")
+from .database import Base, engine
 
 
-class Book(Base):
-    __tablename__ = "books"
+# Function to dynamically create a stock table model for a given ticker
+def create_stock_table(ticker):
+    """
+    Dynamically generates a SQLAlchemy model class for a stock ticker.
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(200), nullable=False)
-    author_id = Column(Integer, ForeignKey("authors.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    :param ticker: The stock ticker (used as table name)
+    :return: The SQLAlchemy model class for the ticker
+    """
 
-    author = relationship("Author", back_populates="books")
+    # Create a unique class name by appending the ticker to 'Stock'
+    class_name = f"Stock_{ticker}"
+
+    # Dynamically create a new class
+    return type(
+        class_name,
+        (Base,),
+        {
+            "__tablename__": ticker,
+            "id": Column(Integer, primary_key=True, autoincrement=True),
+            "trade_date": Column(Date, nullable=False),
+            "open_price": Column(Float),
+            "high_price": Column(Float),
+            "low_price": Column(Float),
+            "close_price": Column(Float),
+            "volume": Column(Float),
+            "__table_args__": (
+                UniqueConstraint("trade_date", name=f"uq_{ticker}_trade_date"),
+            ),
+        },
+    )
+
+
+def create_tables_for_tickers(tickers):
+    tables = {}
+    for ticker in tickers:
+        stock_table = create_stock_table(ticker)
+
+        # Create the table if it doesn't exist
+        stock_table.__table__.create(engine, checkfirst=True)
+
+        tables[ticker] = stock_table
+    return tables
