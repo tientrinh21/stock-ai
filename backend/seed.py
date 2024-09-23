@@ -2,7 +2,7 @@ import yfinance as yf
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import create_stock_table
+from app.models import StockTables
 
 
 def insert_stock_data(ticker: str, db: Session):
@@ -11,12 +11,9 @@ def insert_stock_data(ticker: str, db: Session):
     data.reset_index(inplace=True)
     data.rename(columns={"Date": "Datetime"}, inplace=True)
 
-    # Recreate the StockTable class for the ticker
-    StockTable = create_stock_table(ticker)
-
     # Insert fetched data into the corresponding table
     for _, row in data.iterrows():
-        new_record = StockTable(
+        new_record = StockTables[ticker](
             trade_date=row["Datetime"],
             open_price=row["Open"],
             high_price=row["High"],

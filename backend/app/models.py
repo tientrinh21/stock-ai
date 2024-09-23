@@ -51,3 +51,11 @@ def create_tables_for_tickers(tickers):
 
         tables[ticker] = stock_table
     return tables
+
+# Read and print the stock tickers that make up S&P500
+# sp500 = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
+# tickers = sp500.Symbol.to_list()
+tickers = ["AAPL", "AMZN", "MSFT", "INTL"]
+
+# Create tables
+StockTables = create_tables_for_tickers(tickers)
