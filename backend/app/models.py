@@ -1,8 +1,9 @@
+from uuid import uuid4
 from sqlalchemy import (
+    UUID,
     Column,
     Date,
     Float,
-    Integer,
     UniqueConstraint,
 )
 
@@ -27,7 +28,7 @@ def create_stock_table(ticker):
         (Base,),
         {
             "__tablename__": ticker,
-            "id": Column(Integer, primary_key=True, autoincrement=True),
+            "id": Column(UUID, primary_key=True, default=uuid4),
             "trade_date": Column(Date, nullable=False),
             "open_price": Column(Float),
             "high_price": Column(Float),

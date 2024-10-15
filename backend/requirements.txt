@@ -5,6 +5,7 @@ beautifulsoup4==4.12.3
 certifi==2024.8.30
 charset-normalizer==3.3.2
 click==8.1.7
+DateTime==5.5
 fastapi==0.115.0
 frozendict==2.4.4
 greenlet==3.1.0
@@ -37,3 +38,4 @@ urllib3==2.2.3
 uvicorn==0.30.6
 webencodings==0.5.1
 yfinance==0.2.43
+zope.interface==7.1.0
