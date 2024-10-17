@@ -1,5 +1,3 @@
-import { title } from "process";
-
 export interface NavItem {
   title: string;
   href?: string;
