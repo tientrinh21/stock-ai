@@ -1,3 +1,5 @@
+import { LandingPage } from "./landing-page";
+
 export default function IndexPage() {
-  return <div className="container relative">Hello</div>;
+  return <LandingPage />;
 }
