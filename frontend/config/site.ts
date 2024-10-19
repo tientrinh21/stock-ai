@@ -1,9 +1,8 @@
 export const siteConfig = {
   name: "StockTrade",
-  url: "https://ui.shadcn.com",
+  url: "http://localhost:3000",
   ogImage: "https://ui.shadcn.com/og.jpg",
-  description:
-    "Beautifully designed components that you can copy and paste into your apps. Accessible. Customizable. Open Source.",
+  description: "Virtual strock trading website",
   links: {
     github: "https://github.com/tientrinh21/stock-ai",
   },
