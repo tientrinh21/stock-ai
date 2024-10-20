@@ -4,9 +4,13 @@ from sqlalchemy import (
     Column,
     Date,
     Float,
+    Integer,
     UniqueConstraint,
     String,
+    ForeignKey,
 )
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from .database import Base, engine
 
@@ -68,7 +72,39 @@ StockTables = create_tables_for_tickers(tickers)
 # USER
 class User(Base):
     __tablename__ = "users"
+
     id = Column(UUID, primary_key=True, default=uuid4)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    balance = Column(Float, default=0.0, nullable=False)
+
+    transactions = relationship("Transaction", back_populates="user")
+    holdings = relationship("StockHolding", back_populates="user")
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    id = Column(UUID, primary_key=True, default=uuid4)
+    user_id = Column(UUID, ForeignKey("users.id"))
+    transaction_type = Column(
+        String, nullable=False
+    )  # 'buy', 'sell', 'deposit', 'withdraw'
+    ticker = Column(String)
+    shares = Column(Integer)
+    price = Column(Float, nullable=False)
+    trade_date = Column(Date, server_default=func.now())
+
+    user = relationship("User", back_populates="transactions")
+
+
+class StockHolding(Base):
+    __tablename__ = "stock_holdings"
+
+    id = Column(UUID, primary_key=True, index=True)
+    user_id = Column(UUID, ForeignKey("users.id"))
+    ticker = Column(String, nullable=False)
+    shares = Column(UUID, nullable=False)
+
+    user = relationship("User", back_populates="holdings")

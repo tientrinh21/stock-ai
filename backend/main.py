@@ -42,7 +42,10 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already registered")
     hashed_password = auth.get_password_hash(user.password)
     new_user = models.User(
-        username=user.username, email=user.email, hashed_password=hashed_password
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password,
+        balance=0.0,
     )
     db.add(new_user)
     db.commit()
@@ -86,6 +89,123 @@ async def get_current_user(
 @app.get("/users/me", response_model=schemas.User)
 async def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+
+@app.get("/users/details", response_model=schemas.UserDetails)
+async def read_users_details(
+    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    # Fetch holdings and transactions
+    holdings = (
+        db.query(models.StockHolding)
+        .filter(models.StockHolding.user_id == current_user.id)
+        .all()
+    )
+    transactions = (
+        db.query(models.Transaction)
+        .filter(models.Transaction.user_id == current_user.id)
+        .all()
+    )
+
+    return {"user": current_user, "holdings": holdings, "transactions": transactions}
+
+
+# Execute a transaction (buy, sell, deposit, withdraw)
+@app.post("/transactions", response_model=schemas.Transaction)
+def execute_transaction(
+    transaction: schemas.TransactionCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db_transaction = models.Transaction()
+
+    # Handle "deposit" transactions
+    if transaction.transaction_type == "deposit":
+        current_user.balance += transaction.price  # price is the deposit amount
+        db_transaction = models.Transaction(
+            user_id=current_user.id,
+            transaction_type="deposit",
+            price=transaction.price,
+        )
+
+    # Handle "withdraw" transactions
+    elif transaction.transaction_type == "withdraw":
+        if current_user.balance < transaction.price:
+            raise HTTPException(
+                status_code=400, detail="Insufficient balance for withdrawal"
+            )
+        current_user.balance -= transaction.price  # price is the withdraw amount
+        db_transaction = models.Transaction(
+            user_id=current_user.id,
+            transaction_type="withdraw",
+            price=transaction.price,
+        )
+
+    # Handle "buy" transactions
+    elif transaction.transaction_type == "buy":
+        cost = transaction.shares * transaction.price
+        if current_user.balance < cost:
+            raise HTTPException(
+                status_code=400, detail="Insufficient balance to buy shares"
+            )
+        current_user.balance -= cost
+        # Add stock to holdings or update existing
+        holding = (
+            db.query(models.StockHolding)
+            .filter(
+                models.StockHolding.user_id == transaction.user_id,
+                models.StockHolding.ticker == transaction.ticker,
+            )
+            .first()
+        )
+        if holding:
+            holding.shares += transaction.shares
+        else:
+            holding = models.StockHolding(
+                user_id=current_user.id,
+                ticker=transaction.ticker,
+                shares=transaction.shares,
+            )
+            db.add(holding)
+        db_transaction = models.Transaction(
+            user_id=current_user.id,
+            transaction_type="buy",
+            ticker=transaction.ticker,
+            shares=transaction.shares,
+            price=transaction.price,
+        )
+
+    # Handle "sell" transactions
+    elif transaction.transaction_type == "sell":
+        holding = (
+            db.query(models.StockHolding)
+            .filter(
+                models.StockHolding.user_id == current_user.id,
+                models.StockHolding.ticker == transaction.ticker,
+            )
+            .first()
+        )
+        if holding is None or holding.shares < transaction.shares:
+            raise HTTPException(status_code=400, detail="Insufficient shares to sell")
+        holding.shares -= transaction.shares
+        current_user.balance += transaction.shares * transaction.price
+        # Remove holding if all shares are sold
+        if holding.shares == 0:
+            db.delete(holding)
+        db_transaction = models.Transaction(
+            user_id=current_user.id,
+            transaction_type="sell",
+            ticker=transaction.ticker,
+            shares=transaction.shares,
+            price=transaction.price,
+        )
+
+    # Record the transaction and commit changes
+    db.add(db_transaction)
+    db.commit()
+    db.refresh(db_transaction)
+
+    return db_transaction
 
 
 if __name__ == "__main__":
