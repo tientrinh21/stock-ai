@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-context";
+import { toast } from "sonner";
 
 export function SiteHeader() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -55,7 +56,12 @@ export function SiteHeader() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={logout}>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        logout();
+                        toast.info("Logged out");
+                      }}
+                    >
                       Logout
                     </DropdownMenuItem>
                   </DropdownMenuContent>

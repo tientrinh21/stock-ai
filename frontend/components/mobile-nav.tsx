@@ -10,7 +10,14 @@ import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export function MobileNav() {
   const [open, setOpen] = React.useState(false);
@@ -79,6 +86,11 @@ export function MobileNav() {
             )}
           </div>
         </ScrollArea>
+
+        <SheetHeader className="sr-only">
+          <SheetTitle>StockTrade</SheetTitle>
+          <SheetDescription>Mobile Nav</SheetDescription>
+        </SheetHeader>
       </SheetContent>
     </Sheet>
   );

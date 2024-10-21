@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth-context";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export const description =
   "A login form with email and password. There's an option to login with Google and a link to sign up if you don't have an account.";
@@ -22,14 +23,15 @@ export const description =
 export function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+
+    const toastId = "loginToast";
+    toast.loading("Loggin in...", { id: toastId });
 
     try {
       const response = await fetch("http://127.0.0.1:8000/token", {
@@ -46,12 +48,14 @@ export function LoginForm() {
       if (response.ok) {
         const { access_token } = await response.json();
         login(access_token);
+        toast.success("Logged in.", { id: toastId });
         router.push("/");
       } else {
-        setError("Invalid username or password");
+        toast.error("Invalid username or password.", { id: toastId });
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      toast.error("An error occurred. Please try again.", { id: toastId });
+      console.log(error);
     }
   };
 
@@ -86,7 +90,6 @@ export function LoginForm() {
               required
             />
           </div>
-          {error && <p className="text-red-500">{error}</p>}
           <Button type="submit" className="w-full">
             Login
           </Button>

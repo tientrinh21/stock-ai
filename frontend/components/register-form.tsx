@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth-context";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export const description =
   "A sign up form with username, email and password inside a card. There's a link to login if you already have an account";
@@ -23,14 +24,15 @@ export function RegisterForm() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+
+    const toastId = "registerToast";
+    toast.loading("Creating new account...", { id: toastId });
 
     try {
       const registerResponse = await fetch("http://127.0.0.1:8000/register", {
@@ -57,16 +59,19 @@ export function RegisterForm() {
           const { access_token } = await loginResponse.json();
           login(access_token);
           router.push("/");
+          toast.success("Registration successful, logged in.", { id: toastId });
         } else {
-          setError(
+          toast.warning(
             "Registration successful, but login failed. Please try logging in.",
+            { id: toastId },
           );
+          router.push("/login");
         }
       } else {
-        setError("Registration failed. Please try again.");
+        toast.error("Registration failed. Please try again.", { id: toastId });
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      toast.error("An error occurred. Please try again.", { id: toastId });
     }
   };
 
@@ -110,7 +115,6 @@ export function RegisterForm() {
               required
             />
           </div>
-          {error && <p className="text-red-500">{error}</p>}
           <Button type="submit" className="w-full">
             Create an account
           </Button>
