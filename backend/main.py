@@ -227,9 +227,11 @@ def execute_transaction(
             raise HTTPException(status_code=400, detail="Insufficient shares to sell")
         holding.shares -= transaction.shares
         current_user.balance += transaction.shares * transaction.price
+
         # Remove holding if all shares are sold
-        if holding.shares == 0:
-            db.delete(holding)
+        # if holding.shares == 0:
+        #     db.delete(holding)
+
         db_transaction = models.Transaction(
             user_id=current_user.id,
             transaction_type="sell",
