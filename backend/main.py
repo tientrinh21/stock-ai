@@ -143,7 +143,11 @@ def execute_transaction(
 
     # Handle "buy" transactions
     elif transaction.transaction_type == "buy":
+        if transaction.shares is None:
+            raise HTTPException(status_code=400, detail="Invalid number of shares")
+
         cost = transaction.shares * transaction.price
+
         if current_user.balance < cost:
             raise HTTPException(
                 status_code=400, detail="Insufficient balance to buy shares"
@@ -153,7 +157,7 @@ def execute_transaction(
         holding = (
             db.query(models.StockHolding)
             .filter(
-                models.StockHolding.user_id == transaction.user_id,
+                models.StockHolding.user_id == current_user.id,
                 models.StockHolding.ticker == transaction.ticker,
             )
             .first()
@@ -177,6 +181,9 @@ def execute_transaction(
 
     # Handle "sell" transactions
     elif transaction.transaction_type == "sell":
+        if transaction.shares is None:
+            raise HTTPException(status_code=400, detail="Invalid number of shares")
+
         holding = (
             db.query(models.StockHolding)
             .filter(
