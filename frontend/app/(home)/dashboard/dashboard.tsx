@@ -25,6 +25,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 import {
   ArrowUpRight,
@@ -32,9 +33,12 @@ import {
   DollarSign,
   TrendingUp,
   Activity,
+  Search,
 } from "lucide-react";
 import { moneyFormat } from "@/lib/utils";
 import { StockChange } from "@/components/stock-change";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface UserData {
   user: {
@@ -80,9 +84,48 @@ export function Dashboard() {
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredStocks = stockData.filter((stock) =>
-    stock.ticker.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredHoldings = userData?.holdings.filter((holding) => {
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === holding.ticker,
+    );
+
+    return (
+      stockInfo?.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      stockInfo?.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      stockInfo?.longName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  const holdingsWithCost = userData?.holdings.map((holding) => {
+    // Get all buy transactions for this holding
+    const buyTransactions = userData?.transactions.filter(
+      (transaction) =>
+        transaction.ticker === holding.ticker &&
+        transaction.transaction_type === "buy",
+    );
+
+    // Calculate total cost and total shares bought
+    const totalCost = buyTransactions.reduce(
+      (total, transaction) => total + transaction.price * transaction.shares,
+      0,
+    );
+
+    const totalSharesBought = buyTransactions.reduce(
+      (total, transaction) => total + transaction.shares,
+      0,
+    );
+
+    // Calculate the average cost per share
+    const averageCost =
+      totalSharesBought > 0 ? totalCost / totalSharesBought : 0;
+
+    return {
+      ticker: holding.ticker,
+      totalCost,
+      averageCost,
+      shares: holding.shares,
+    };
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -146,23 +189,6 @@ export function Dashboard() {
     stockData.reduce((total, stock) => total + stock.changePercent, 0) /
     stockData.length;
 
-  const pieChartData = userData.holdings.map((holding) => {
-    const stockInfo = stockData.find(
-      (stock) => stock.ticker === holding.ticker,
-    );
-    return {
-      name: holding.ticker,
-      value: stockInfo ? stockInfo.open * holding.shares : 0,
-    };
-  });
-
-  const performanceData = userData.transactions
-    .slice(-7)
-    .map((transaction) => ({
-      date: transaction.trade_date,
-      value: transaction.price * transaction.shares,
-    }));
-
   // Total Profit calculation
   const totalInvestment = userData.transactions
     .filter((transaction) => transaction.transaction_type === "buy")
@@ -197,6 +223,32 @@ export function Dashboard() {
   const numberOfStocks = new Set(
     userData.holdings.map((holding) => holding.ticker),
   ).size;
+
+  // Portfolio Composition data mapping
+  const pieChartData = userData.holdings.map((holding) => {
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === holding.ticker,
+    );
+    if (holding.shares === 0) return;
+    return {
+      name: holding.ticker,
+      value: stockInfo ? stockInfo.open * holding.shares : 0,
+    };
+  });
+  const portfolioAllocation = [
+    { name: "AAPL", value: 7512.5 },
+    { name: "GOOGL", value: 28007.5 },
+    { name: "MSFT", value: 9165.0 },
+    { name: "AMZN", value: 16600.0 },
+  ];
+
+  // Recent Performance data mapping
+  const performanceData = userData.transactions
+    .slice(-7)
+    .map((transaction) => ({
+      date: transaction.trade_date,
+      value: transaction.price * transaction.shares,
+    }));
 
   return (
     <div className="container mx-auto p-4">
@@ -310,30 +362,58 @@ export function Dashboard() {
             <CardTitle>Portfolio Composition</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <ChartContainer
+              config={{
+                value: {
+                  label: "Allocation",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="h-[300px] w-full"
+            >
               <PieChart>
                 <Pie
                   data={pieChartData}
                   cx="50%"
                   cy="50%"
+                  label={({ payload, ...props }) => {
+                    return (
+                      <text
+                        cx={props.cx}
+                        cy={props.cy}
+                        x={props.x}
+                        y={props.y}
+                        textAnchor={props.textAnchor}
+                        dominantBaseline={props.dominantBaseline}
+                      >
+                        <tspan x={props.x} dy="0" fill={payload.fill}>
+                          {payload.name}
+                        </tspan>
+                        <tspan
+                          x={props.x}
+                          dy="1.2em"
+                          fill="hsla(var(--foreground))"
+                        >
+                          {payload.value}
+                        </tspan>
+                      </text>
+                    );
+                  }}
                   labelLine={false}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
-                  label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
-                  }
                 >
-                  {pieChartData.map((entry, index) => (
+                  {portfolioAllocation.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
                     />
                   ))}
                 </Pie>
-                <Tooltip />
+                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
               </PieChart>
-            </div>
+            </ChartContainer>
           </CardContent>
         </Card>
 
@@ -342,68 +422,99 @@ export function Dashboard() {
             <CardTitle>Recent Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ChartContainer
-                config={{
-                  value: {
-                    label: "Transaction Value",
-                    color: "hsl(var(--chart-1))",
-                  },
-                }}
-                className="h-full w-full"
-              >
-                <AreaChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="var(--color-value)"
-                    fill="var(--color-value)"
-                    fillOpacity={0.2}
-                  />
-                </AreaChart>
-              </ChartContainer>
-            </div>
+            <ChartContainer
+              config={{
+                value: {
+                  label: "Transaction Value",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="h-[300px] w-full"
+            >
+              <AreaChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--color-value)"
+                  fill="var(--color-value)"
+                  fillOpacity={0.2}
+                />
+              </AreaChart>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-3">
           <CardTitle>Holdings</CardTitle>
+          <div className="flex w-full max-w-sm items-center space-x-2">
+            <Input
+              type="text"
+              placeholder="Search stocks"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Button type="submit" size="icon">
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Symbol</TableHead>
+                <TableHead>Ticker</TableHead>
                 <TableHead>Shares</TableHead>
                 <TableHead>Current Price</TableHead>
+                <TableHead>Avg Cost</TableHead>
+                <TableHead>Total Cost</TableHead>
                 <TableHead>Market Value</TableHead>
                 <TableHead>Change</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {userData.holdings.map((holding) => {
+              {filteredHoldings?.map((holding) => {
                 const stockInfo = stockData.find(
                   (stock) => stock.ticker === holding.ticker,
                 );
+
+                const costInfo = holdingsWithCost?.find(
+                  (holdingWithCost) =>
+                    holdingWithCost.ticker === holding.ticker,
+                );
+
                 return (
                   <TableRow key={holding.id}>
-                    <TableCell className="font-medium">
-                      {holding.ticker}
+                    <TableCell className="flex flex-col font-medium">
+                      <span>{holding.ticker}</span>
+                      <span className="text-xs font-thin">
+                        {stockInfo?.shortName}
+                      </span>
                     </TableCell>
                     <TableCell>{holding.shares}</TableCell>
                     <TableCell>${stockInfo?.open.toFixed(2)}</TableCell>
                     <TableCell>
-                      $
-                      {(stockInfo
-                        ? stockInfo.open * holding.shares
-                        : 0
-                      ).toLocaleString()}
+                      {holding.shares > 0
+                        ? `$${costInfo?.averageCost.toFixed(2)}`
+                        : "--"}
+                    </TableCell>
+                    <TableCell>
+                      {holding.shares > 0
+                        ? `$${costInfo?.totalCost.toLocaleString()}`
+                        : "--"}
+                    </TableCell>
+                    <TableCell>
+                      {holding.shares > 0
+                        ? `$${(stockInfo
+                            ? stockInfo.open * holding.shares
+                            : 0
+                          ).toLocaleString()}`
+                        : "--"}
                     </TableCell>
                     <TableCell>
                       <span
