@@ -31,10 +31,10 @@ export function LoginForm() {
     e.preventDefault();
 
     const toastId = "loginToast";
-    toast.loading("Loggin in...", { id: toastId });
+    toast.loading("Logging in...", { id: toastId });
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/token", {
+      const response = await fetch("/api/token", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",

@@ -24,7 +24,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
 } from "recharts";
 import {
@@ -62,6 +61,11 @@ interface UserData {
     price: number;
     trade_date: string;
   }[];
+  watchlist: {
+    id: string;
+    user_id: string;
+    ticker: string;
+  }[];
 }
 
 interface StockData {
@@ -84,9 +88,9 @@ export function Dashboard() {
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredHoldings = userData?.holdings.filter((holding) => {
+  const filteredWatchlist = userData?.watchlist.filter((element) => {
     const stockInfo = stockData.find(
-      (stock) => stock.ticker === holding.ticker,
+      (stock) => stock.ticker === element.ticker,
     );
 
     return (
@@ -96,43 +100,58 @@ export function Dashboard() {
     );
   });
 
-  const holdingsWithCost = userData?.holdings.map((holding) => {
-    // Get all buy transactions for this holding
-    const buyTransactions = userData?.transactions.filter(
-      (transaction) =>
-        transaction.ticker === holding.ticker &&
-        transaction.transaction_type === "buy",
-    );
+  // const filteredHoldings = userData?.holdings.filter((holding) => {
+  //   const stockInfo = stockData.find(
+  //     (stock) => stock.ticker === holding.ticker,
+  //   );
+  //
+  //   return (
+  //     holding.shares > 0 &&
+  //     (stockInfo?.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //       stockInfo?.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //       stockInfo?.longName.toLowerCase().includes(searchTerm.toLowerCase()))
+  //   );
+  // });
 
-    // Calculate total cost and total shares bought
-    const totalCost = buyTransactions.reduce(
-      (total, transaction) => total + transaction.price * transaction.shares,
-      0,
-    );
-
-    const totalSharesBought = buyTransactions.reduce(
-      (total, transaction) => total + transaction.shares,
-      0,
-    );
-
-    // Calculate the average cost per share
-    const averageCost =
-      totalSharesBought > 0 ? totalCost / totalSharesBought : 0;
-
-    return {
-      ticker: holding.ticker,
-      totalCost,
-      averageCost,
-      shares: holding.shares,
-    };
-  });
+  // const holdingsWithCost = userData?.holdings.map((holding) => {
+  //   if (holding.shares === 0) return;
+  //
+  //   // Get all buy transactions for this holding
+  //   const buyTransactions = userData?.transactions.filter(
+  //     (transaction) =>
+  //       transaction.ticker === holding.ticker &&
+  //       transaction.transaction_type === "buy",
+  //   );
+  //
+  //   // Calculate total cost and total shares bought
+  //   const totalCost = buyTransactions.reduce(
+  //     (total, transaction) => total + transaction.price * transaction.shares,
+  //     0,
+  //   );
+  //
+  //   const totalSharesBought = buyTransactions.reduce(
+  //     (total, transaction) => total + transaction.shares,
+  //     0,
+  //   );
+  //
+  //   // Calculate the average cost per share
+  //   const averageCost =
+  //     totalSharesBought > 0 ? totalCost / totalSharesBought : 0;
+  //
+  //   return {
+  //     ticker: holding.ticker,
+  //     totalCost,
+  //     averageCost,
+  //     shares: holding.shares,
+  //   };
+  // });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     const fetchData = async () => {
       try {
-        const response = await fetch("http://localhost:8000/users/details", {
+        const response = await fetch("/api/users/details", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -145,9 +164,7 @@ export function Dashboard() {
 
         // Fetch real-time stock data for holdings
         const stockPromises = data.holdings.map(async (holding) => {
-          const response = await fetch(
-            `http://localhost:8000/stocks/${holding.ticker}/quote`,
-          );
+          const response = await fetch(`/api/stocks/${holding.ticker}/quote`);
           const quote: StockData = await response.json();
           return quote;
         });
@@ -225,22 +242,16 @@ export function Dashboard() {
   ).size;
 
   // Portfolio Composition data mapping
-  const pieChartData = userData.holdings.map((holding) => {
+  const pieChartData = activePositions.map((holding) => {
     const stockInfo = stockData.find(
       (stock) => stock.ticker === holding.ticker,
     );
-    if (holding.shares === 0) return;
+    if (holding.shares === 0) return null;
     return {
       name: holding.ticker,
       value: stockInfo ? stockInfo.open * holding.shares : 0,
     };
   });
-  const portfolioAllocation = [
-    { name: "AAPL", value: 7512.5 },
-    { name: "GOOGL", value: 28007.5 },
-    { name: "MSFT", value: 9165.0 },
-    { name: "AMZN", value: 16600.0 },
-  ];
 
   // Recent Performance data mapping
   const performanceData = userData.transactions
@@ -394,7 +405,7 @@ export function Dashboard() {
                           dy="1.2em"
                           fill="hsla(var(--foreground))"
                         >
-                          {payload.value}
+                          ${payload.value}
                         </tspan>
                       </text>
                     );
@@ -404,7 +415,7 @@ export function Dashboard() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {portfolioAllocation.map((entry, index) => (
+                  {pieChartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
@@ -451,7 +462,7 @@ export function Dashboard() {
 
       <Card>
         <CardHeader className="space-y-3">
-          <CardTitle>Holdings</CardTitle>
+          <CardTitle>Your Watchlist</CardTitle>
           <div className="flex w-full max-w-sm items-center space-x-2">
             <Input
               type="text"
@@ -469,71 +480,35 @@ export function Dashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>Ticker</TableHead>
-                <TableHead>Shares</TableHead>
+                <TableHead>Previous Close</TableHead>
                 <TableHead>Current Price</TableHead>
-                <TableHead>Avg Cost</TableHead>
-                <TableHead>Total Cost</TableHead>
-                <TableHead>Market Value</TableHead>
                 <TableHead>Change</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredHoldings?.map((holding) => {
+              {filteredWatchlist?.map((element) => {
                 const stockInfo = stockData.find(
-                  (stock) => stock.ticker === holding.ticker,
-                );
-
-                const costInfo = holdingsWithCost?.find(
-                  (holdingWithCost) =>
-                    holdingWithCost.ticker === holding.ticker,
+                  (stock) => stock.ticker === element.ticker,
                 );
 
                 return (
-                  <TableRow key={holding.id}>
+                  <TableRow key={element.id}>
                     <TableCell className="flex flex-col font-medium">
-                      <span>{holding.ticker}</span>
+                      <span>{element.ticker}</span>
                       <span className="text-xs font-thin">
                         {stockInfo?.shortName}
                       </span>
                     </TableCell>
-                    <TableCell>{holding.shares}</TableCell>
+                    <TableCell>
+                      ${stockInfo?.previousClose.toFixed(2)}
+                    </TableCell>
                     <TableCell>${stockInfo?.open.toFixed(2)}</TableCell>
                     <TableCell>
-                      {holding.shares > 0
-                        ? `$${costInfo?.averageCost.toFixed(2)}`
-                        : "--"}
-                    </TableCell>
-                    <TableCell>
-                      {holding.shares > 0
-                        ? `$${costInfo?.totalCost.toLocaleString()}`
-                        : "--"}
-                    </TableCell>
-                    <TableCell>
-                      {holding.shares > 0
-                        ? `$${(stockInfo
-                            ? stockInfo.open * holding.shares
-                            : 0
-                          ).toLocaleString()}`
-                        : "--"}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={
-                          stockInfo && stockInfo.change >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }
-                      >
-                        {stockInfo && stockInfo.change >= 0 ? (
-                          <ArrowUpRight className="mr-1 inline" />
-                        ) : (
-                          <ArrowDownRight className="mr-1 inline" />
-                        )}
-                        {stockInfo
-                          ? Math.abs(stockInfo.changePercent).toFixed(2)
-                          : 0}
-                        %
-                      </span>
+                      <StockChange
+                        change={stockInfo?.change ?? 0}
+                        percentChange={stockInfo?.changePercent ?? 0}
+                        className="text-sm"
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -542,6 +517,100 @@ export function Dashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* <Card> */}
+      {/*   <CardHeader className="space-y-3"> */}
+      {/*     <CardTitle>Holdings</CardTitle> */}
+      {/*     <div className="flex w-full max-w-sm items-center space-x-2"> */}
+      {/*       <Input */}
+      {/*         type="text" */}
+      {/*         placeholder="Search stocks" */}
+      {/*         value={searchTerm} */}
+      {/*         onChange={(e) => setSearchTerm(e.target.value)} */}
+      {/*       /> */}
+      {/*       <Button type="submit" size="icon"> */}
+      {/*         <Search className="h-4 w-4" /> */}
+      {/*       </Button> */}
+      {/*     </div> */}
+      {/*   </CardHeader> */}
+      {/*   <CardContent> */}
+      {/*     <Table> */}
+      {/*       <TableHeader> */}
+      {/*         <TableRow> */}
+      {/*           <TableHead>Ticker</TableHead> */}
+      {/*           <TableHead>Shares</TableHead> */}
+      {/*           <TableHead>Current Price</TableHead> */}
+      {/*           <TableHead>Avg Cost</TableHead> */}
+      {/*           <TableHead>Total Cost</TableHead> */}
+      {/*           <TableHead>Market Value</TableHead> */}
+      {/*           <TableHead>Change</TableHead> */}
+      {/*         </TableRow> */}
+      {/*       </TableHeader> */}
+      {/*       <TableBody> */}
+      {/*         {filteredHoldings?.map((holding) => { */}
+      {/*           const stockInfo = stockData.find( */}
+      {/*             (stock) => stock.ticker === holding.ticker, */}
+      {/*           ); */}
+      {/**/}
+      {/*           const costInfo = holdingsWithCost?.find( */}
+      {/*             (holdingWithCost) => */}
+      {/*               holdingWithCost?.ticker === holding.ticker, */}
+      {/*           ); */}
+      {/**/}
+      {/*           return ( */}
+      {/*             <TableRow key={holding.id}> */}
+      {/*               <TableCell className="flex flex-col font-medium"> */}
+      {/*                 <span>{holding.ticker}</span> */}
+      {/*                 <span className="text-xs font-thin"> */}
+      {/*                   {stockInfo?.shortName} */}
+      {/*                 </span> */}
+      {/*               </TableCell> */}
+      {/*               <TableCell>{holding.shares}</TableCell> */}
+      {/*               <TableCell>${stockInfo?.open.toFixed(2)}</TableCell> */}
+      {/*               <TableCell> */}
+      {/*                 {holding.shares > 0 */}
+      {/*                   ? `$${costInfo?.averageCost.toFixed(2)}` */}
+      {/*                   : "--"} */}
+      {/*               </TableCell> */}
+      {/*               <TableCell> */}
+      {/*                 {holding.shares > 0 */}
+      {/*                   ? `$${costInfo?.totalCost.toLocaleString()}` */}
+      {/*                   : "--"} */}
+      {/*               </TableCell> */}
+      {/*               <TableCell> */}
+      {/*                 {holding.shares > 0 */}
+      {/*                   ? `$${(stockInfo */}
+      {/*                       ? stockInfo.open * holding.shares */}
+      {/*                       : 0 */}
+      {/*                     ).toLocaleString()}` */}
+      {/*                   : "--"} */}
+      {/*               </TableCell> */}
+      {/*               <TableCell> */}
+      {/*                 <span */}
+      {/*                   className={ */}
+      {/*                     stockInfo && stockInfo.change >= 0 */}
+      {/*                       ? "text-green-600" */}
+      {/*                       : "text-red-600" */}
+      {/*                   } */}
+      {/*                 > */}
+      {/*                   {stockInfo && stockInfo.change >= 0 ? ( */}
+      {/*                     <ArrowUpRight className="mr-1 inline" /> */}
+      {/*                   ) : ( */}
+      {/*                     <ArrowDownRight className="mr-1 inline" /> */}
+      {/*                   )} */}
+      {/*                   {stockInfo */}
+      {/*                     ? Math.abs(stockInfo.changePercent).toFixed(2) */}
+      {/*                     : 0} */}
+      {/*                   % */}
+      {/*                 </span> */}
+      {/*               </TableCell> */}
+      {/*             </TableRow> */}
+      {/*           ); */}
+      {/*         })} */}
+      {/*       </TableBody> */}
+      {/*     </Table> */}
+      {/*   </CardContent> */}
+      {/* </Card> */}
     </div>
   );
 }

@@ -108,7 +108,7 @@ export function Watchlist() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-3">
           <CardTitle>Your Watchlist</CardTitle>
           <div className="flex w-full max-w-sm items-center space-x-2">
             <Input

@@ -11,7 +11,7 @@ export function StockChange({
   change: number;
   percentChange?: number;
   unit?: string;
-  extraText: string;
+  extraText?: string;
   className?: string;
 }) {
   return (

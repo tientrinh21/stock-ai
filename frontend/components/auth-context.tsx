@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const fetchUserInfo = async (token: string) => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/users/me", {
+      const response = await fetch("/api/users/me", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -35,7 +35,7 @@ export function RegisterForm() {
     toast.loading("Creating new account...", { id: toastId });
 
     try {
-      const registerResponse = await fetch("http://127.0.0.1:8000/register", {
+      const registerResponse = await fetch("/api/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,7 +44,7 @@ export function RegisterForm() {
       });
 
       if (registerResponse.ok) {
-        const loginResponse = await fetch("http://127.0.0.1:8000/token", {
+        const loginResponse = await fetch("/api/token", {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
