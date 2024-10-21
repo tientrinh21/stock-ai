@@ -8,6 +8,7 @@ from sqlalchemy import (
     UniqueConstraint,
     String,
     ForeignKey,
+    DateTime,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -108,3 +109,14 @@ class StockHolding(Base):
     shares = Column(Integer, nullable=False)
 
     user = relationship("User", back_populates="holdings")
+
+
+class Watchlist(Base):
+    __tablename__ = "watchlist"
+
+    id = Column(UUID, primary_key=True, default=uuid4)
+    user_id = Column(UUID, ForeignKey("users.id"), nullable=False)
+    ticker = Column(String, nullable=False)
+
+    # Ensure a user cannot have duplicate tickers in their watchlist
+    __table_args__ = (UniqueConstraint("user_id", "ticker", name="uq_user_ticker"),)

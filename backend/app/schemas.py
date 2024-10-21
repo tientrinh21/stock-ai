@@ -58,10 +58,26 @@ class StockHolding(BaseModel):
         from_attributes = True
 
 
+class WatchlistBase(BaseModel):
+    ticker: str
+
+
+class WatchlistCreate(WatchlistBase):
+    pass
+
+
+class Watchlist(WatchlistBase):
+    id: UUID4
+
+    class Config:
+        from_attributes = True
+
+
 class UserDetails(BaseModel):
     user: User
     holdings: List[StockHolding]
     transactions: List[Transaction]
+    watchlist: List[Watchlist]
 
     class Config:
         from_attributes = True

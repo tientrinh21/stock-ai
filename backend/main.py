@@ -5,6 +5,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from typing import List
 
 from app.database import engine, get_db
 from app import models, schemas, auth
@@ -126,7 +127,7 @@ async def read_users_me(current_user: models.User = Depends(get_current_user)):
 async def read_users_details(
     current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    # Fetch holdings and transactions
+    # Fetch holdings, transactions, and watchlist
     holdings = (
         db.query(models.StockHolding)
         .filter(models.StockHolding.user_id == current_user.id)
@@ -137,8 +138,18 @@ async def read_users_details(
         .filter(models.Transaction.user_id == current_user.id)
         .all()
     )
+    watchlist = (
+        db.query(models.Watchlist)
+        .filter(models.Watchlist.user_id == current_user.id)
+        .all()
+    )
 
-    return {"user": current_user, "holdings": holdings, "transactions": transactions}
+    return {
+        "user": current_user,
+        "holdings": holdings,
+        "transactions": transactions,
+        "watchlist": watchlist,
+    }
 
 
 # Execute a transaction (buy, sell, deposit, withdraw)
@@ -184,6 +195,22 @@ def execute_transaction(
                 status_code=400, detail="Insufficient balance to buy shares"
             )
         current_user.balance -= cost
+
+        # Check if ticker is in watchlist and add if it is not
+        watchlist_item = (
+            db.query(models.Watchlist)
+            .filter(
+                models.Watchlist.user_id == current_user.id,
+                models.Watchlist.ticker == transaction.ticker.upper(),
+            )
+            .first()
+        )
+        if not watchlist_item:
+            new_watchlist_item = models.Watchlist(
+                user_id=current_user.id, ticker=transaction.ticker.upper()
+            )
+            db.add(new_watchlist_item)
+
         # Add stock to holdings or update existing
         holding = (
             db.query(models.StockHolding)
@@ -202,6 +229,7 @@ def execute_transaction(
                 shares=transaction.shares,
             )
             db.add(holding)
+
         db_transaction = models.Transaction(
             user_id=current_user.id,
             transaction_type="buy",
@@ -229,8 +257,8 @@ def execute_transaction(
         current_user.balance += transaction.shares * transaction.price
 
         # Remove holding if all shares are sold
-        # if holding.shares == 0:
-        #     db.delete(holding)
+        if holding.shares == 0:
+            db.delete(holding)
 
         db_transaction = models.Transaction(
             user_id=current_user.id,
@@ -246,6 +274,71 @@ def execute_transaction(
     db.refresh(db_transaction)
 
     return db_transaction
+
+
+@app.get("/watchlist", response_model=List[schemas.Watchlist])
+def get_watchlist(
+    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    watchlist = (
+        db.query(models.Watchlist)
+        .filter(models.Watchlist.user_id == current_user.id)
+        .all()
+    )
+    return watchlist
+
+
+@app.post("/watchlist", response_model=schemas.Watchlist)
+def add_to_watchlist(
+    ticker: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    # Check if the ticker is already in the watchlist
+    existing = (
+        db.query(models.Watchlist)
+        .filter(
+            models.Watchlist.user_id == current_user.id,
+            models.Watchlist.ticker == ticker.upper(),
+        )
+        .first()
+    )
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Ticker already in watchlist")
+
+    new_watchlist_item = models.Watchlist(
+        user_id=current_user.id, ticker=ticker.upper()
+    )
+    db.add(new_watchlist_item)
+    db.commit()
+    db.refresh(new_watchlist_item)
+
+    return new_watchlist_item
+
+
+@app.delete("/watchlist/{ticker}")
+def delete_from_watchlist(
+    ticker: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    watchlist_item = (
+        db.query(models.Watchlist)
+        .filter(
+            models.Watchlist.user_id == current_user.id,
+            models.Watchlist.ticker == ticker.upper(),
+        )
+        .first()
+    )
+
+    if not watchlist_item:
+        raise HTTPException(status_code=404, detail="Ticker not found in watchlist")
+
+    db.delete(watchlist_item)
+    db.commit()
+
+    return {"message": f"{ticker} removed from watchlist"}
 
 
 if __name__ == "__main__":
