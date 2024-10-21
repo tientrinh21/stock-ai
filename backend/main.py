@@ -42,7 +42,6 @@ def get_stock_quote(ticker: str):
         stock = yf.Ticker(ticker_upper)
         # Fetch summary information using yfinance
         quote_data = stock.info
-        print(quote_data)
 
         open = quote_data.get("regularMarketOpen") or float("nan")
         previousClose = quote_data.get("regularMarketPreviousClose") or float("nan")
