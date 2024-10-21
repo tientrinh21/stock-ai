@@ -1,3 +1,4 @@
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
 interface AppLayoutProps {
@@ -9,6 +10,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <>
       <SiteHeader />
       <main className="flex flex-1">{children}</main>
+      <SiteFooter />
     </>
   );
 }

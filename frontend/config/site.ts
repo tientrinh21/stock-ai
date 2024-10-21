@@ -6,6 +6,10 @@ export const siteConfig = {
   links: {
     github: "https://github.com/tientrinh21/stock-ai",
   },
+  author: {
+    name: "Tien Trinh",
+    link: "https://github.com/tientrinh21",
+  },
 };
 
 export type SiteConfig = typeof siteConfig;

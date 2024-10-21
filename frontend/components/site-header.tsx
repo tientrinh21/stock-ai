@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-context";
 import { toast } from "sonner";
+import { DollarSign, LogOut } from "lucide-react";
 
 export function SiteHeader() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -51,18 +52,26 @@ export function SiteHeader() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="text-white">
-                      {user?.username}{" "}
+                      {user?.username}
                       <ChevronDownIcon className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
+                    <DropdownMenuItem className="group flex justify-center focus:bg-transparent">
+                      <DollarSign className="mr-2 h-4 w-4 text-blue-500" />
+                      <span className="font-semibold text-blue-500">
+                        {user?.balance}
+                      </span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem
+                      className="group flex justify-center"
                       onSelect={() => {
                         logout();
                         toast.info("Logged out");
                       }}
                     >
-                      Logout
+                      <LogOut className="mr-2 h-4 w-4 group-hover:text-red-500" />
+                      <span className="group-hover:text-red-500">Logout</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

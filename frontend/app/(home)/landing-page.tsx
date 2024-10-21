@@ -27,17 +27,18 @@ import {
   PieChart,
   TrendingUp,
   DollarSign,
-  Shield,
+  Clock,
+  Bot,
 } from "lucide-react";
 import Link from "next/link";
 
 const demoChartData = [
-  { date: "2023-01", value: 1000 },
-  { date: "2023-02", value: 1200 },
-  { date: "2023-03", value: 1100 },
-  { date: "2023-04", value: 1300 },
-  { date: "2023-05", value: 1500 },
-  { date: "2023-06", value: 1400 },
+  { date: "2024-01", value: 1000 },
+  { date: "2024-02", value: 1200 },
+  { date: "2024-03", value: 1100 },
+  { date: "2024-04", value: 1300 },
+  { date: "2024-05", value: 1500 },
+  { date: "2024-06", value: 1400 },
 ];
 
 export function LandingPage() {
@@ -140,25 +141,31 @@ export function LandingPage() {
         <div className="grid gap-8 md:grid-cols-3">
           <div>
             <DollarSign className="mx-auto mb-4 h-12 w-12 text-primary" />
-            <h3 className="mb-2 text-xl font-semibold">Competitive Pricing</h3>
-            <p>Low fees and competitive rates to maximize your profits.</p>
-          </div>
-          <div>
-            <Shield className="mx-auto mb-4 h-12 w-12 text-primary" />
-            <h3 className="mb-2 text-xl font-semibold">Secure Platform</h3>
+            <h3 className="mb-2 text-xl font-semibold">Free Virtual Trading</h3>
             <p>
-              State-of-the-art security measures to protect your investments.
+              Practice and hone your trading skills without risking real money.
             </p>
           </div>
           <div>
-            <TrendingUp className="mx-auto mb-4 h-12 w-12 text-primary" />
-            <h3 className="mb-2 text-xl font-semibold">Expert Support</h3>
-            <p>Access to professional guidance and 24/7 customer support.</p>
+            <Bot className="mx-auto mb-4 h-12 w-12 text-primary" />
+            <h3 className="mb-2 text-xl font-semibold">AI-Assisted Trading</h3>
+            <p>
+              Leverage advanced AI algorithms to optimize your trading
+              decisions.
+            </p>
+          </div>
+          <div>
+            <Clock className="mx-auto mb-4 h-12 w-12 text-primary" />
+            <h3 className="mb-2 text-xl font-semibold">24/7 Availability</h3>
+            <p>
+              Access the platform anytime, anywhere to stay on top of market
+              movements.
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="mb-16 text-center">
+      <section className="mb-8 text-center">
         <h2 className="mb-4 text-3xl font-bold">Ready to Start Trading?</h2>
         <p className="mb-8 text-xl text-muted-foreground">
           Join thousands of successful investors on StockTrade today.

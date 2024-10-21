@@ -49,7 +49,7 @@ export function LoginForm() {
         const { access_token } = await response.json();
         login(access_token);
         toast.success("Logged in.", { id: toastId });
-        router.push("/");
+        router.push("/dashboard");
       } else {
         toast.error("Invalid username or password.", { id: toastId });
       }
