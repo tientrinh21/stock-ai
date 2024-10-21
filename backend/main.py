@@ -1,4 +1,6 @@
 import uvicorn
+import yfinance as yf
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,6 +32,35 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 def read_stock_data(ticker: str, db: Session = Depends(get_db)):
     data = db.query(models.StockTables[ticker.upper()]).all()
     return data
+
+
+@app.get("/stocks/{ticker}/quote")
+def get_stock_quote(ticker: str):
+    ticker_upper = ticker.upper()
+    try:
+        stock = yf.Ticker(ticker_upper)
+        # Fetch summary information using yfinance
+        quote_data = stock.info
+        print(quote_data)
+
+        open = quote_data.get("regularMarketOpen") or float("nan")
+        previousClose = quote_data.get("regularMarketPreviousClose") or float("nan")
+        change = round(open - previousClose, 2)
+        changePercent = round(change / previousClose * 100, 2)
+
+        return {
+            "ticker": quote_data.get("symbol", ticker_upper),
+            "shortName": quote_data.get("shortName", ticker_upper),
+            "longName": quote_data.get("longName", ticker_upper),
+            "open": open,
+            "previousClose": previousClose,
+            "change": change,
+            "changePercent": changePercent,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching stock data: {str(e)}"
+        )
 
 
 # USER
