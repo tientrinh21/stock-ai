@@ -102,9 +102,9 @@ class Transaction(Base):
 class StockHolding(Base):
     __tablename__ = "stock_holdings"
 
-    id = Column(UUID, primary_key=True, index=True)
+    id = Column(UUID, primary_key=True, default=uuid4)
     user_id = Column(UUID, ForeignKey("users.id"))
     ticker = Column(String, nullable=False)
-    shares = Column(UUID, nullable=False)
+    shares = Column(Integer, nullable=False)
 
     user = relationship("User", back_populates="holdings")
