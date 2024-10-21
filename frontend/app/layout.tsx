@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { siteConfig } from "@/config/site";
 import { AuthProvider } from "@/components/auth-context";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: {
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 </div>
               </div>
             </AuthProvider>
+            <Toaster richColors />
           </ThemeProvider>
         </body>
       </html>
