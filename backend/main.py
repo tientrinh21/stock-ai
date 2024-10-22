@@ -1,5 +1,6 @@
 import uvicorn
 import yfinance as yf
+import pandas as pd
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -10,6 +11,8 @@ from typing import List
 from app.database import engine, get_db
 from app import models, schemas, auth
 
+df_sp500 = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
+tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -293,6 +296,9 @@ def add_to_watchlist(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    if ticker.upper() not in tickers_sp500:
+        raise HTTPException(status_code=400, detail="Ticker not exist")
+
     # Check if the ticker is already in the watchlist
     existing = (
         db.query(models.Watchlist)
