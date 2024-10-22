@@ -29,7 +29,7 @@ export function StockChange({
       )}
       {Math.abs(change).toFixed(2)}
       {unit}
-      {percentChange ? `(${Math.abs(percentChange).toFixed(2)}%)` : ""}
+      {percentChange ? ` (${Math.abs(percentChange).toFixed(2)}%)` : ""}
 
       <span className="text-muted-foreground">
         {extraText ? ` ${extraText}` : ""}

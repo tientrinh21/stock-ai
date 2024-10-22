@@ -207,15 +207,23 @@ export function Dashboard() {
     stockData.length;
 
   // Total Profit calculation
-  const totalInvestment = userData.transactions
+  const totalInvestmentFromBuys = userData.transactions
     .filter((transaction) => transaction.transaction_type === "buy")
     .reduce(
       (total, transaction) => total + transaction.price * transaction.shares,
       0,
     );
 
-  const totalProfit = totalPortfolioValue - totalInvestment;
-  const totalChangePercent = (totalProfit / totalInvestment) * 100;
+  const totalProceedsFromSells = userData.transactions
+    .filter((transaction) => transaction.transaction_type === "sell")
+    .reduce(
+      (total, transaction) => total + transaction.price * transaction.shares,
+      0,
+    );
+
+  const netInvestment = totalInvestmentFromBuys - totalProceedsFromSells;
+  const totalProfit = totalPortfolioValue - netInvestment;
+  const totalChangePercent = (totalProfit / netInvestment) * 100;
 
   // Today's Change calculation
   const todaysChange = userData.holdings.reduce((total, holding) => {
