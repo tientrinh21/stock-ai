@@ -30,7 +30,6 @@ multitasking==0.0.11
 numpy==2.1.1
 orjson==3.10.7
 pandas==2.2.2
-passlib==1.7.4
 peewee==3.17.6
 platformdirs==4.3.6
 psycopg2-binary==2.9.9
