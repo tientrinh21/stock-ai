@@ -1,20 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
 import {
   PieChart,
   Pie,
@@ -24,81 +10,38 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  ResponsiveContainer,
 } from "recharts";
 import {
-  ArrowUpRight,
-  ArrowDownRight,
-  DollarSign,
-  TrendingUp,
-  Activity,
-  Search,
-} from "lucide-react";
-import { moneyFormat } from "@/lib/utils";
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DollarSign, TrendingUp, Activity, Search } from "lucide-react";
 import { StockChange } from "@/components/stock-change";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-interface UserData {
-  user: {
-    id: string;
-    username: string;
-    email: string;
-    balance: number;
-  };
-  holdings: {
-    id: string;
-    user_id: string;
-    ticker: string;
-    shares: number;
-  }[];
-  transactions: {
-    id: string;
-    user_id: string;
-    transaction_type: string;
-    ticker: string;
-    shares: number;
-    price: number;
-    trade_date: string;
-  }[];
-  watchlist: {
-    id: string;
-    user_id: string;
-    ticker: string;
-  }[];
-}
-
-interface StockData {
-  ticker: string;
-  shortName: string;
-  longName: string;
-  open: number;
-  previousClose: number;
-  change: number;
-  changePercent: number;
-}
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
+import { SpinnerLoading } from "@/components/spinner-loading";
+import { FetchErrorAlert } from "@/components/fetch-error-alert";
+import { UserDetailsData } from "@/types/user";
+import { StockData } from "@/types/stock";
+import { moneyFormat } from "@/lib/utils";
 
 export function Dashboard() {
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userData, setUserData] = useState<UserDetailsData | null>(null);
   const [stockData, setStockData] = useState<StockData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredWatchlist = userData?.watchlist.filter((element) => {
-    const stockInfo = stockData.find(
-      (stock) => stock.ticker === element.ticker,
-    );
-
-    return (
-      stockInfo?.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      stockInfo?.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      stockInfo?.longName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
 
   // const filteredHoldings = userData?.holdings.filter((holding) => {
   //   const stockInfo = stockData.find(
@@ -159,7 +102,7 @@ export function Dashboard() {
         if (!response.ok) {
           throw new Error("Failed to fetch user data");
         }
-        const data: UserData = await response.json();
+        const data: UserDetailsData = await response.json();
         setUserData(data);
 
         // Fetch real-time stock data for holdings
@@ -182,17 +125,8 @@ export function Dashboard() {
     fetchData();
   }, []);
 
-  if (isLoading) {
-    return <div className="container mx-auto p-4">Loading...</div>;
-  }
-
-  if (error || !userData) {
-    return (
-      <div className="container mx-auto p-4">
-        Error: {error || "Failed to load data"}
-      </div>
-    );
-  }
+  if (isLoading) return <SpinnerLoading />;
+  if (error || !userData) return <FetchErrorAlert error={error} />;
 
   // Portfolio Value calculation
   const totalPortfolioValue = userData.holdings.reduce((total, holding) => {
@@ -254,7 +188,7 @@ export function Dashboard() {
     const stockInfo = stockData.find(
       (stock) => stock.ticker === holding.ticker,
     );
-    if (holding.shares === 0) return null;
+
     return {
       name: holding.ticker,
       value: stockInfo ? stockInfo.open * holding.shares : 0,
@@ -268,6 +202,19 @@ export function Dashboard() {
       date: transaction.trade_date,
       value: transaction.price * transaction.shares,
     }));
+
+  // Watchlist filtering
+  const filteredWatchlist = userData?.watchlist.filter((element) => {
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === element.ticker,
+    );
+
+    return (
+      stockInfo?.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      stockInfo?.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      stockInfo?.longName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   return (
     <div className="container mx-auto p-4">
@@ -385,7 +332,6 @@ export function Dashboard() {
               config={{
                 value: {
                   label: "Allocation",
-                  color: "hsl(var(--chart-1))",
                 },
               }}
               className="h-[300px] w-full"
@@ -420,13 +366,13 @@ export function Dashboard() {
                   }}
                   labelLine={false}
                   outerRadius={80}
-                  fill="#8884d8"
+                  fill="hsla(var(--foreground))"
                   dataKey="value"
                 >
                   {pieChartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
+                      fill={`hsl(var(--chart-${(index + 1) % 5}))`}
                     />
                   ))}
                 </Pie>
@@ -454,7 +400,9 @@ export function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartTooltip
+                  content={<ChartTooltipContent className="w-[175px]" />}
+                />
                 <Area
                   type="monotone"
                   dataKey="value"

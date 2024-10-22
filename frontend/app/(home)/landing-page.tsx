@@ -89,7 +89,9 @@ export function LandingPage() {
                     fill="var(--color-value)"
                     fillOpacity={0.2}
                   />
-                  <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                  <ChartTooltip
+                    content={<ChartTooltipContent className="w-[175px]" />}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </ChartContainer>
