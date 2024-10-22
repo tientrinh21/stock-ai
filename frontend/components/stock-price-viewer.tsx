@@ -209,7 +209,7 @@ export function StockPriceViewer({
   }: {
     active?: boolean;
     payload?: Payload<ValueType, NameType>[];
-    label?: any;
+    label?: unknown;
   }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
