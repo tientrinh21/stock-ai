@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (token) {
       fetchUserInfo(token);
     }
-  }, []);
+  });
 
   const fetchUserInfo = async (token: string) => {
     try {

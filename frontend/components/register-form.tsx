@@ -72,6 +72,7 @@ export function RegisterForm() {
       }
     } catch (error) {
       toast.error("An error occurred. Please try again.", { id: toastId });
+      console.log(error);
     }
   };
 

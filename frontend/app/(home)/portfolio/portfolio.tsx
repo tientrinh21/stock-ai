@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
   Table,
   TableBody,
@@ -11,21 +15,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import {
-  ArrowUpRight,
   ArrowDownRight,
+  ArrowUpRight,
   DollarSign,
-  TrendingUp,
   PieChart as PieChartIcon,
   TrendingDown,
+  TrendingUp,
 } from "lucide-react";
+import { useState } from "react";
+import { Cell, Pie, PieChart } from "recharts";
 
 const portfolioSummary = {
   totalValue: 52750.25,

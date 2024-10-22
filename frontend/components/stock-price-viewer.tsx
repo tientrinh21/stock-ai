@@ -9,11 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
   ResponsiveContainer,
   LineChart,
@@ -32,6 +28,12 @@ import {
 } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  NameType,
+  Payload,
+  ValueType,
+} from "recharts/types/component/DefaultTooltipContent";
+import { DateRange } from "react-day-picker";
 
 // Mock function to generate stock data
 const generateStockData = (startDate: Date, endDate: Date) => {
@@ -98,10 +100,7 @@ export function StockPriceViewer({
   customPredictionModel,
 }: StockPriceViewerProps) {
   const [timeRange, setTimeRange] = useState("1D");
-  const [dateRange, setDateRange] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
     to: new Date(),
   });
@@ -131,8 +130,8 @@ export function StockPriceViewer({
         startDate = subMonths(endDate, 12);
         break;
       case "Custom":
-        startDate = dateRange.from || subDays(endDate, 30);
-        endDate = dateRange.to || endDate;
+        startDate = dateRange?.from || subDays(endDate, 30);
+        endDate = dateRange?.to || endDate;
         break;
       default:
         startDate = subDays(endDate, 30);
@@ -164,8 +163,8 @@ export function StockPriceViewer({
             7,
             Math.floor(
               differenceInDays(
-                dateRange.to || new Date(),
-                dateRange.from || subDays(new Date(), 30),
+                dateRange?.to || new Date(),
+                dateRange?.from || subDays(new Date(), 30),
               ) / 4,
             ),
           ),
@@ -203,7 +202,15 @@ export function StockPriceViewer({
     }
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: Payload<ValueType, NameType>[];
+    label?: any;
+  }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const isPrediction = !isNaN(data.predictedPrice);
