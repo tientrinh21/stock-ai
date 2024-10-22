@@ -1,3 +1,4 @@
+from sqlalchemy import and_
 import uvicorn
 import yfinance as yf
 import pandas as pd
@@ -6,7 +7,8 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from datetime import date, datetime
 
 from app.database import engine, get_db
 from app import models, schemas, auth
@@ -33,9 +35,26 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # STOCKS
 @app.get("/stocks/{ticker}")
-def read_stock_data(ticker: str, db: Session = Depends(get_db)):
-    data = db.query(models.StockTables[ticker.upper()]).all()
-    return data
+def read_stock_data(ticker: str, start_date: Optional[date] = None, end_date: Optional[date] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Stock).filter(models.Stock.ticker == ticker)
+
+    # Set default end_date to today if not provided
+    if end_date is None:
+        end_date = datetime.now().date()
+
+    # Filter by date range if start_date is provided
+    if start_date:
+        query = query.filter(
+            and_(models.Stock.trade_date >= start_date, models.Stock.trade_date <= end_date)
+        )
+
+    # Execute the query
+    stocks = query.all()
+
+    if not stocks:
+        raise HTTPException(status_code=404, detail="No stocks found for the given criteria")
+
+    return stocks
 
 
 @app.get("/stocks/{ticker}/quote")
@@ -297,7 +316,7 @@ def add_to_watchlist(
     current_user: models.User = Depends(get_current_user),
 ):
     if ticker.upper() not in tickers_sp500:
-        raise HTTPException(status_code=400, detail="Ticker not exist")
+        raise HTTPException(status_code=400, detail="Ticker not found")
 
     # Check if the ticker is already in the watchlist
     existing = (

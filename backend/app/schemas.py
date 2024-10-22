@@ -81,3 +81,24 @@ class UserDetails(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class StockBase(BaseModel):
+    ticker: str
+    trade_date: date
+    open_price: float
+    high_price: float
+    low_price: float
+    close_price: float
+    volume: float
+
+
+class StockCreate(StockBase):
+    pass
+
+
+class StockOut(StockBase):
+    id: UUID4
+
+    class Config:
+        from_attributes = True

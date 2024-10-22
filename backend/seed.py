@@ -1,18 +1,20 @@
 import yfinance as yf
-import pandas as pd
+# import pandas as pd
 
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime
 
 from app.database import SessionLocal
-from app.models import StockTables
+from app.models import Stock
 
 
 def insert_stock_data(ticker: str, db: Session):
+    # Get the latest trade date for the given ticker
     latest_record = (
-        db.query(StockTables[ticker])
-        .order_by(StockTables[ticker].trade_date.desc())
+        db.query(Stock)
+        .filter(Stock.ticker == ticker)
+        .order_by(Stock.trade_date.desc())
         .first()
     )
 
@@ -21,20 +23,20 @@ def insert_stock_data(ticker: str, db: Session):
         print(f"The latest trade date of {ticker} is: {latest_trade_date}.")
         data = yf.download(
             ticker, start=latest_trade_date, end=datetime.now()
-        )  # Fetch stock data from lastet trade date
+        )  # Fetch stock data from latest trade date
     else:
         print(f"No records of {ticker} found.")
-        data = yf.download(
-            ticker, period="1y"
-        )  # Fetch latest 1 year of stock data (later fetch all in production)
+        data = yf.download(ticker, period="1y")  # Fetch the latest 1 year of stock data
 
+    # Reset index and rename the Date column
     data.reset_index(inplace=True)
-    data.rename(columns={"Date": "Datetime"}, inplace=True)
+    data.rename(columns={"Date": "trade_date"}, inplace=True)
 
     # Insert fetched data into the corresponding table
     for _, row in data.iterrows():
         new_record = {
-            "trade_date": row["Datetime"],
+            "ticker": ticker,  # Include ticker in the record
+            "trade_date": row["trade_date"],
             "open_price": row["Open"],
             "high_price": row["High"],
             "low_price": row["Low"],
@@ -42,8 +44,10 @@ def insert_stock_data(ticker: str, db: Session):
             "volume": row["Volume"],
         }
 
-        stmt = insert(StockTables[ticker]).values(new_record)
-        stmt = stmt.on_conflict_do_nothing()
+        stmt = insert(Stock).values(new_record)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["ticker", "trade_date"]
+        )  # Handle conflicts by doing nothing
 
         db.execute(stmt)
 
@@ -53,12 +57,14 @@ def insert_stock_data(ticker: str, db: Session):
 def seed_data():
     db = SessionLocal()
 
-    df_sp500 = pd.read_html(
-        "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    )[0]
-    tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
+    # You can uncomment this to fetch the S&P 500 tickers if needed
+    # df_sp500 = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
+    # tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in S&P 500
 
-    for ticker in tickers_sp500:
+    # Example tickers for testing
+    tickers = ["AAPL", "AMZN", "MSFT", "INTC", "TSLA"]
+
+    for ticker in tickers:
         insert_stock_data(ticker, db)
 
     print("Data seeded successfully.")
