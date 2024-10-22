@@ -111,8 +111,8 @@ export function Dashboard() {
           const quote: StockData = await response.json();
           return quote;
         });
-        const stockDataResults = await Promise.all(stockPromises);
 
+        const stockDataResults = await Promise.all(stockPromises);
         setStockData(stockDataResults);
       } catch (err) {
         setError("An error occurred while fetching data");

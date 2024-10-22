@@ -10,7 +10,7 @@ export function moneyFormat(amount: number, currency: string = "$") {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const sign = Math.sign(amount);
+  const sign = amount >= 0 ? "" : "-";
 
-  return `${sign ? "" : "-"}${currency}${formattedAmound}`;
+  return `${sign}${currency}${formattedAmound}`;
 }

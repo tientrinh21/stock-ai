@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Search, Plus, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -12,77 +13,133 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownRight, Search, Plus, X } from "lucide-react";
-
-const initialWatchlist = [
-  {
-    symbol: "AAPL",
-    name: "Apple Inc.",
-    price: 150.25,
-    change: 2.5,
-    changePercent: 1.69,
-  },
-  {
-    symbol: "GOOGL",
-    name: "Alphabet Inc.",
-    price: 2800.75,
-    change: -15.25,
-    changePercent: -0.54,
-  },
-  {
-    symbol: "MSFT",
-    name: "Microsoft Corporation",
-    price: 305.5,
-    change: 3.75,
-    changePercent: 1.24,
-  },
-  {
-    symbol: "AMZN",
-    name: "Amazon.com Inc.",
-    price: 3320.0,
-    change: 28.5,
-    changePercent: 0.86,
-  },
-  {
-    symbol: "TSLA",
-    name: "Tesla, Inc.",
-    price: 695.0,
-    change: -8.5,
-    changePercent: -1.21,
-  },
-];
+import { StockChange } from "@/components/stock-change";
+import { FetchErrorAlert } from "@/components/fetch-error-alert";
+import { SpinnerLoading } from "@/components/spinner-loading";
+import { StockData } from "@/types/stock";
+import { toast } from "sonner";
+import { WatchlistItem } from "@/types/watchlist";
 
 export function Watchlist() {
-  const [watchlist, setWatchlist] = useState(initialWatchlist);
+  const [stockData, setStockData] = useState<StockData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [newSymbol, setNewSymbol] = useState("");
+  const [newTicker, setNewTicker] = useState("");
 
-  const filteredWatchlist = watchlist.filter(
-    (stock) =>
-      stock.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      stock.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const fetchData = async () => {
+    const token = localStorage.getItem("token");
 
-  const addToWatchlist = () => {
-    if (
-      newSymbol &&
-      !watchlist.some((stock) => stock.symbol === newSymbol.toUpperCase())
-    ) {
-      // In a real application, you would fetch the stock data from an API here
-      const newStock = {
-        symbol: newSymbol.toUpperCase(),
-        name: "New Stock Inc.",
-        price: 100.0,
-        change: 0,
-        changePercent: 0,
-      };
-      setWatchlist([...watchlist, newStock]);
-      setNewSymbol("");
+    try {
+      const response = await fetch("/api/watchlist", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch user data");
+      }
+      const data: WatchlistItem[] = await response.json();
+      setWatchlist(data);
+
+      // Fetch real-time stock data for holdings
+      const stockPromises = data.map(async (item) => {
+        const response = await fetch(`/api/stocks/${item.ticker}/quote`);
+        const quote: StockData = await response.json();
+        return quote;
+      });
+
+      const stockDataResults = await Promise.all(stockPromises);
+      setStockData(stockDataResults);
+    } catch (err) {
+      setError("An error occurred while fetching data");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const removeFromWatchlist = (symbol: string) => {
-    setWatchlist(watchlist.filter((stock) => stock.symbol !== symbol));
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (isLoading) return <SpinnerLoading />;
+  if (error || !watchlist) return <FetchErrorAlert error={error} />;
+
+  const filteredWatchlist = watchlist.filter((element) => {
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === element.ticker,
+    );
+
+    return (
+      stockInfo?.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      stockInfo?.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      stockInfo?.longName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  const addToWatchlist = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const toastId = "watchlistToast";
+    toast.loading("Adding to your watchlist...", { id: toastId });
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(`/api/watchlist?ticker=${newTicker}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success("Succesfully added.", { id: toastId });
+        fetchData();
+      } else {
+        const result = await response.json();
+        toast.error(result.detail || "An error occurred. Please try again.", {
+          id: toastId,
+        });
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.", { id: toastId });
+      console.log(error);
+    }
+  };
+
+  const removeFromWatchlist = async (ticker: string) => {
+    const toastId = "watchlistToast";
+    toast.loading("Removing from your watchlist...", { id: toastId });
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(`/api/watchlist/${ticker}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        toast.success("Succesfully removed.", { id: toastId });
+        fetchData();
+      } else {
+        const result = await response.json();
+        toast.error(result.detail || "An error occurred. Please try again.", {
+          id: toastId,
+        });
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.", { id: toastId });
+      console.log(error);
+    }
   };
 
   return (
@@ -93,20 +150,21 @@ export function Watchlist() {
           <CardTitle>Add to Watchlist</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-2">
+          <form onSubmit={addToWatchlist} className="flex space-x-2">
             <Input
               type="text"
               placeholder="Enter stock symbol"
-              value={newSymbol}
-              onChange={(e) => setNewSymbol(e.target.value)}
+              value={newTicker}
+              onChange={(e) => setNewTicker(e.target.value)}
             />
-            <Button onClick={addToWatchlist}>
+            <Button type="submit">
               <Plus className="mr-2 h-4 w-4" />
               Add
             </Button>
-          </div>
+          </form>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="space-y-3">
           <CardTitle>Your Watchlist</CardTitle>
@@ -117,52 +175,65 @@ export function Watchlist() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search className="h-4 w-4 text-muted-foreground" />
+            <Button type="submit" size="icon">
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Symbol</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead>Ticker</TableHead>
+                <TableHead className="hidden md:table-cell">Name</TableHead>
+                <TableHead>Previous Close</TableHead>
+                <TableHead>Current Price</TableHead>
                 <TableHead>Change</TableHead>
-                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredWatchlist.map((stock) => (
-                <TableRow key={stock.symbol}>
-                  <TableCell className="font-medium">{stock.symbol}</TableCell>
-                  <TableCell>{stock.name}</TableCell>
-                  <TableCell>${stock.price.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <span
-                      className={
-                        stock.change >= 0 ? "text-green-600" : "text-red-600"
-                      }
-                    >
-                      {stock.change >= 0 ? (
-                        <ArrowUpRight className="inline h-4 w-4" />
-                      ) : (
-                        <ArrowDownRight className="inline h-4 w-4" />
-                      )}
-                      ${Math.abs(stock.change).toFixed(2)} (
-                      {Math.abs(stock.changePercent).toFixed(2)}%)
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFromWatchlist(stock.symbol)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredWatchlist?.map((element) => {
+                const stockInfo = stockData.find(
+                  (stock) => stock.ticker === element.ticker,
+                );
+
+                return (
+                  <TableRow key={element.id}>
+                    <TableCell className="flex flex-col font-medium md:hidden">
+                      <span>{element.ticker}</span>
+                      <span className="text-xs font-thin">
+                        {stockInfo?.shortName}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {element.ticker}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {stockInfo?.shortName}
+                    </TableCell>
+                    <TableCell>
+                      ${stockInfo?.previousClose.toFixed(2)}
+                    </TableCell>
+                    <TableCell>${stockInfo?.open.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <StockChange
+                        change={stockInfo?.change ?? 0}
+                        percentChange={stockInfo?.changePercent ?? 0}
+                        className="text-sm"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeFromWatchlist(element.ticker)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
