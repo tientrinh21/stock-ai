@@ -14,7 +14,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", ""))
 
 def verify_password(plain_password, hashed_password):
     password_byte_enc = plain_password.encode("utf-8")
-    return bcrypt.checkpw(password=password_byte_enc, hashed_password=hashed_password)
+    hashed_password_byte_enc = hashed_password.encode("utf-8")
+    return bcrypt.checkpw(
+        password=password_byte_enc, hashed_password=hashed_password_byte_enc
+    )
 
 
 def get_password_hash(password):
