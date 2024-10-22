@@ -14,3 +14,6 @@ cpu_kind = "shared"
 cpus = 1
 memory = "1gb"
 
+[build]
+builder = "paketobuildpacks/builder:base"
+buildpacks = ["gcr.io/paketo-buildpacks/nodejs"]
