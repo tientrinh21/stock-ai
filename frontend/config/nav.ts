@@ -1,17 +1,10 @@
-export interface NavItem {
-  title: string;
-  href?: string;
-  disabled?: boolean;
-  external?: boolean;
-  label?: string;
-}
-export interface MainNavItem extends NavItem {}
+import { MainNavItem } from "@/types/nav";
 
-export interface DocsConfig {
+export interface NavConfig {
   mainNav: MainNavItem[];
 }
 
-export const navConfig: DocsConfig = {
+export const navConfig: NavConfig = {
   mainNav: [
     { title: "Dashboard", href: "/dashboard" },
     { title: "Market", href: "/market" },
