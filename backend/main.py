@@ -35,8 +35,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # STOCKS
 @app.get("/stocks/{ticker}")
-def read_stock_data(ticker: str, start_date: Optional[date] = None, end_date: Optional[date] = None, db: Session = Depends(get_db)):
-    query = db.query(models.Stock).filter(models.Stock.ticker == ticker)
+def read_stock_data(
+    ticker: str,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+):
+    ticker_upper = ticker.upper()
+    query = db.query(models.Stock).filter(models.Stock.ticker == ticker_upper)
 
     # Set default end_date to today if not provided
     if end_date is None:
@@ -45,14 +51,19 @@ def read_stock_data(ticker: str, start_date: Optional[date] = None, end_date: Op
     # Filter by date range if start_date is provided
     if start_date:
         query = query.filter(
-            and_(models.Stock.trade_date >= start_date, models.Stock.trade_date <= end_date)
+            and_(
+                models.Stock.trade_date >= start_date,
+                models.Stock.trade_date <= end_date,
+            )
         )
 
     # Execute the query
     stocks = query.all()
 
     if not stocks:
-        raise HTTPException(status_code=404, detail="No stocks found for the given criteria")
+        raise HTTPException(
+            status_code=404, detail="No stocks found for the given criteria"
+        )
 
     return stocks
 
