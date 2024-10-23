@@ -2,6 +2,8 @@ import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function FetchErrorAlert({ error }: { error: string | null }) {
+  console.error(error || "Something went wrong during fetching.");
+
   return (
     <div className="container mx-auto flex h-screen items-center justify-center p-4">
       <Alert variant="destructive" className="w-full max-w-md">
