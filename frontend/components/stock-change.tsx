@@ -1,10 +1,10 @@
-import { cn } from "@/lib/utils";
+import { cn, moneyFormat } from "@/lib/utils";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
 export function StockChange({
   change,
   percentChange,
-  unit = "",
+  unit = "$",
   extraText = "",
   className,
 }: {
@@ -27,8 +27,8 @@ export function StockChange({
       ) : (
         <ArrowDownRight className="inline h-4 w-4" />
       )}
-      {Math.abs(change).toFixed(2)}
-      {unit}
+      {moneyFormat(Math.abs(change), unit !== "%" ? unit : "")}
+      {unit === "%" && unit}
       {percentChange ? ` (${Math.abs(percentChange).toFixed(2)}%)` : ""}
 
       <span className="text-muted-foreground">
