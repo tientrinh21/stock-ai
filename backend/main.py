@@ -15,6 +15,7 @@ from app import models, schemas, auth
 
 df_sp500 = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
 tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
+tickers_sp500.append("^GSPC")
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -172,6 +173,7 @@ async def read_users_details(
     transactions = (
         db.query(models.Transaction)
         .filter(models.Transaction.user_id == current_user.id)
+        .order_by(models.Transaction.trade_date.asc())
         .all()
     )
     watchlist = (
@@ -197,6 +199,9 @@ def execute_transaction(
 ):
     db_transaction = models.Transaction()
 
+    # Handle the trade_date logic (use the provided date or default to today)
+    trade_date = transaction.trade_date or date.today()
+
     # Handle "deposit" transactions
     if transaction.transaction_type == "deposit":
         current_user.balance += transaction.price  # price is the deposit amount
@@ -204,6 +209,7 @@ def execute_transaction(
             user_id=current_user.id,
             transaction_type="deposit",
             price=transaction.price,
+            trade_date=trade_date,
         )
 
     # Handle "withdraw" transactions
@@ -217,6 +223,7 @@ def execute_transaction(
             user_id=current_user.id,
             transaction_type="withdraw",
             price=transaction.price,
+            trade_date=trade_date,
         )
 
     # Handle "buy" transactions
@@ -272,6 +279,7 @@ def execute_transaction(
             ticker=transaction.ticker,
             shares=transaction.shares,
             price=transaction.price,
+            trade_date=trade_date,
         )
 
     # Handle "sell" transactions
@@ -302,6 +310,7 @@ def execute_transaction(
             ticker=transaction.ticker,
             shares=transaction.shares,
             price=transaction.price,
+            trade_date=trade_date,
         )
 
     # Record the transaction and commit changes

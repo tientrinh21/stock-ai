@@ -1,6 +1,6 @@
 from datetime import date
 from pydantic import UUID4, BaseModel, EmailStr
-from typing import List
+from typing import List, Optional
 
 
 class UserCreate(BaseModel):
@@ -33,6 +33,7 @@ class TransactionCreate(BaseModel):
     ticker: str | None = None  # Only relevant for 'buy' and 'sell'
     shares: int | None = None  # Only relevant for 'buy' and 'sell'
     price: float
+    trade_date: Optional[date]
 
 
 class Transaction(BaseModel):

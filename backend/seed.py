@@ -62,7 +62,7 @@ def seed_data():
     # tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in S&P 500
 
     # Example tickers for testing
-    tickers = ["AAPL", "AMZN", "MSFT", "INTC", "TSLA"]
+    tickers = ["AAPL", "AMZN", "MSFT", "INTC", "TSLA", "^GSPC"]
 
     for ticker in tickers:
         insert_stock_data(ticker, db)

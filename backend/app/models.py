@@ -1,4 +1,5 @@
 from uuid import uuid4
+from datetime import date
 from sqlalchemy import (
     UUID,
     Column,
@@ -10,7 +11,6 @@ from sqlalchemy import (
     ForeignKey,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from .database import Base
 
@@ -58,7 +58,7 @@ class Transaction(Base):
     ticker = Column(String)
     shares = Column(Integer)
     price = Column(Float, nullable=False)
-    trade_date = Column(Date, server_default=func.now())
+    trade_date = Column(Date, nullable=False, default=date.today)
 
     user = relationship("User", back_populates="transactions")
 
