@@ -25,7 +25,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Activity, Search } from "lucide-react";
+import {
+  DollarSign,
+  TrendingUp,
+  Activity,
+  Search,
+  PieChartIcon,
+  AreaChartIcon,
+} from "lucide-react";
 import { StockChange } from "@/components/stock-change";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,52 +49,6 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
-
-  // const filteredHoldings = userData?.holdings.filter((holding) => {
-  //   const stockInfo = stockData.find(
-  //     (stock) => stock.ticker === holding.ticker,
-  //   );
-  //
-  //   return (
-  //     holding.shares > 0 &&
-  //     (stockInfo?.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //       stockInfo?.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //       stockInfo?.longName.toLowerCase().includes(searchTerm.toLowerCase()))
-  //   );
-  // });
-
-  // const holdingsWithCost = userData?.holdings.map((holding) => {
-  //   if (holding.shares === 0) return;
-  //
-  //   // Get all buy transactions for this holding
-  //   const buyTransactions = userData?.transactions.filter(
-  //     (transaction) =>
-  //       transaction.ticker === holding.ticker &&
-  //       transaction.transaction_type === "buy",
-  //   );
-  //
-  //   // Calculate total cost and total shares bought
-  //   const totalCost = buyTransactions.reduce(
-  //     (total, transaction) => total + transaction.price * transaction.shares,
-  //     0,
-  //   );
-  //
-  //   const totalSharesBought = buyTransactions.reduce(
-  //     (total, transaction) => total + transaction.shares,
-  //     0,
-  //   );
-  //
-  //   // Calculate the average cost per share
-  //   const averageCost =
-  //     totalSharesBought > 0 ? totalCost / totalSharesBought : 0;
-  //
-  //   return {
-  //     ticker: holding.ticker,
-  //     totalCost,
-  //     averageCost,
-  //     shares: holding.shares,
-  //   };
-  // });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -183,7 +144,7 @@ export function Dashboard() {
     userData.holdings.map((holding) => holding.ticker),
   ).size;
 
-  // Portfolio Composition data mapping
+  // Portfolio Allocation data mapping
   const pieChartData = activePositions.map((holding) => {
     const stockInfo = stockData.find(
       (stock) => stock.ticker === holding.ticker,
@@ -324,8 +285,9 @@ export function Dashboard() {
 
       <div className="mb-6 grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Portfolio Composition</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle>Portfolio Allocation</CardTitle>
+            <PieChartIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <ChartContainer
@@ -359,7 +321,7 @@ export function Dashboard() {
                           dy="1.2em"
                           fill="hsla(var(--foreground))"
                         >
-                          ${payload.value}
+                          {moneyFormat(payload.value)}
                         </tspan>
                       </text>
                     );
@@ -383,8 +345,9 @@ export function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>Recent Performance</CardTitle>
+            <AreaChartIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <ChartContainer
@@ -473,100 +436,6 @@ export function Dashboard() {
           </Table>
         </CardContent>
       </Card>
-
-      {/* <Card> */}
-      {/*   <CardHeader className="space-y-3"> */}
-      {/*     <CardTitle>Holdings</CardTitle> */}
-      {/*     <div className="flex w-full max-w-sm items-center space-x-2"> */}
-      {/*       <Input */}
-      {/*         type="text" */}
-      {/*         placeholder="Search stocks" */}
-      {/*         value={searchTerm} */}
-      {/*         onChange={(e) => setSearchTerm(e.target.value)} */}
-      {/*       /> */}
-      {/*       <Button type="submit" size="icon"> */}
-      {/*         <Search className="h-4 w-4" /> */}
-      {/*       </Button> */}
-      {/*     </div> */}
-      {/*   </CardHeader> */}
-      {/*   <CardContent> */}
-      {/*     <Table> */}
-      {/*       <TableHeader> */}
-      {/*         <TableRow> */}
-      {/*           <TableHead>Ticker</TableHead> */}
-      {/*           <TableHead>Shares</TableHead> */}
-      {/*           <TableHead>Current Price</TableHead> */}
-      {/*           <TableHead>Avg Cost</TableHead> */}
-      {/*           <TableHead>Total Cost</TableHead> */}
-      {/*           <TableHead>Market Value</TableHead> */}
-      {/*           <TableHead>Change</TableHead> */}
-      {/*         </TableRow> */}
-      {/*       </TableHeader> */}
-      {/*       <TableBody> */}
-      {/*         {filteredHoldings?.map((holding) => { */}
-      {/*           const stockInfo = stockData.find( */}
-      {/*             (stock) => stock.ticker === holding.ticker, */}
-      {/*           ); */}
-      {/**/}
-      {/*           const costInfo = holdingsWithCost?.find( */}
-      {/*             (holdingWithCost) => */}
-      {/*               holdingWithCost?.ticker === holding.ticker, */}
-      {/*           ); */}
-      {/**/}
-      {/*           return ( */}
-      {/*             <TableRow key={holding.id}> */}
-      {/*               <TableCell className="flex flex-col font-medium"> */}
-      {/*                 <span>{holding.ticker}</span> */}
-      {/*                 <span className="text-xs font-thin"> */}
-      {/*                   {stockInfo?.shortName} */}
-      {/*                 </span> */}
-      {/*               </TableCell> */}
-      {/*               <TableCell>{holding.shares}</TableCell> */}
-      {/*               <TableCell>${stockInfo?.open.toFixed(2)}</TableCell> */}
-      {/*               <TableCell> */}
-      {/*                 {holding.shares > 0 */}
-      {/*                   ? `$${costInfo?.averageCost.toFixed(2)}` */}
-      {/*                   : "--"} */}
-      {/*               </TableCell> */}
-      {/*               <TableCell> */}
-      {/*                 {holding.shares > 0 */}
-      {/*                   ? `$${costInfo?.totalCost.toLocaleString()}` */}
-      {/*                   : "--"} */}
-      {/*               </TableCell> */}
-      {/*               <TableCell> */}
-      {/*                 {holding.shares > 0 */}
-      {/*                   ? `$${(stockInfo */}
-      {/*                       ? stockInfo.open * holding.shares */}
-      {/*                       : 0 */}
-      {/*                     ).toLocaleString()}` */}
-      {/*                   : "--"} */}
-      {/*               </TableCell> */}
-      {/*               <TableCell> */}
-      {/*                 <span */}
-      {/*                   className={ */}
-      {/*                     stockInfo && stockInfo.change >= 0 */}
-      {/*                       ? "text-green-600" */}
-      {/*                       : "text-red-600" */}
-      {/*                   } */}
-      {/*                 > */}
-      {/*                   {stockInfo && stockInfo.change >= 0 ? ( */}
-      {/*                     <ArrowUpRight className="mr-1 inline" /> */}
-      {/*                   ) : ( */}
-      {/*                     <ArrowDownRight className="mr-1 inline" /> */}
-      {/*                   )} */}
-      {/*                   {stockInfo */}
-      {/*                     ? Math.abs(stockInfo.changePercent).toFixed(2) */}
-      {/*                     : 0} */}
-      {/*                   % */}
-      {/*                 </span> */}
-      {/*               </TableCell> */}
-      {/*             </TableRow> */}
-      {/*           ); */}
-      {/*         })} */}
-      {/*       </TableBody> */}
-      {/*     </Table> */}
-      {/*   </CardContent> */}
-      {/* </Card> */}
     </div>
   );
 }
