@@ -19,6 +19,12 @@ import { SpinnerLoading } from "@/components/spinner-loading";
 import { StockData } from "@/types/stock";
 import { toast } from "sonner";
 import { WatchlistItem } from "@/types/watchlist";
+import {
+  addToWatchList,
+  fetchStockData,
+  fetchWatchlist,
+  removeFromWatchList,
+} from "@/lib/request";
 
 export function Watchlist() {
   const [stockData, setStockData] = useState<StockData[]>([]);
@@ -30,29 +36,14 @@ export function Watchlist() {
   const [newTicker, setNewTicker] = useState("");
 
   const fetchData = async () => {
-    const token = localStorage.getItem("token");
-
     try {
-      const response = await fetch("/api/watchlist", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch user data");
-      }
-      const data: WatchlistItem[] = await response.json();
-      setWatchlist(data);
+      const newWatchList = await fetchWatchlist();
+      setWatchlist(newWatchList);
 
-      // Fetch real-time stock data for holdings
-      const stockPromises = data.map(async (item) => {
-        const response = await fetch(`/api/stocks/${item.ticker}/quote`);
-        const quote: StockData = await response.json();
-        return quote;
-      });
+      const tickers = newWatchList.map((item) => item.ticker);
 
-      const stockDataResults = await Promise.all(stockPromises);
-      setStockData(stockDataResults);
+      const newStockData = await fetchStockData(tickers);
+      setStockData(newStockData);
     } catch (err) {
       setError("An error occurred while fetching data");
       console.error(err);
@@ -84,22 +75,14 @@ export function Watchlist() {
     );
   });
 
-  const addToWatchlist = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const toastId = "watchlistToast";
     toast.loading("Adding to your watchlist...", { id: toastId });
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(`/api/watchlist?ticker=${newTicker}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await addToWatchList(newTicker);
 
       if (response.ok) {
         toast.success("Succesfully added.", { id: toastId });
@@ -116,20 +99,12 @@ export function Watchlist() {
     }
   };
 
-  const removeFromWatchlist = async (ticker: string) => {
+  const handleRemoveTicker = async (ticker: string) => {
     const toastId = "watchlistToast";
     toast.loading("Removing from your watchlist...", { id: toastId });
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(`/api/watchlist/${ticker}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await removeFromWatchList(ticker);
 
       if (response.ok) {
         toast.success("Succesfully removed.", { id: toastId });
@@ -154,7 +129,7 @@ export function Watchlist() {
           <CardTitle>Add to Watchlist</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={addToWatchlist} className="flex space-x-2">
+          <form onSubmit={handleFormSubmit} className="flex space-x-2">
             <Input
               type="text"
               placeholder="Enter stock symbol"
@@ -234,7 +209,7 @@ export function Watchlist() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => removeFromWatchlist(element.ticker)}
+                        onClick={() => handleRemoveTicker(element.ticker)}
                       >
                         <X className="h-4 w-4" />
                       </Button>

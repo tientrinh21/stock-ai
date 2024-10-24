@@ -18,9 +18,17 @@ import {
 import { useAuth } from "@/components/auth-context";
 import { toast } from "sonner";
 import { DollarSign, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function SiteHeader() {
   const { user, logout, isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    toast.info("Logged out");
+    router.push("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -65,10 +73,7 @@ export function SiteHeader() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="group flex justify-center"
-                      onSelect={() => {
-                        logout();
-                        toast.info("Logged out");
-                      }}
+                      onSelect={handleLogout}
                     >
                       <LogOut className="mr-2 h-4 w-4 group-hover:text-red-500" />
                       <span className="group-hover:text-red-500">Logout</span>

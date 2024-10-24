@@ -60,7 +60,9 @@ export function Dashboard() {
         const newUserData = userData ?? (await fetchUserDetails());
         setUserData(newUserData);
 
-        const newStockData = await fetchStockData(newUserData);
+        const tickers = newUserData.holdings.map((holding) => holding.ticker);
+
+        const newStockData = await fetchStockData(tickers);
         setStockData(newStockData);
       } catch (err) {
         setError("An error occurred while fetching data");
