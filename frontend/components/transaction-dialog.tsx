@@ -44,12 +44,19 @@ import { toast } from "sonner";
 
 const formSchema = z.object({
   transactionType: z.enum(["deposit", "withdraw", "buy", "sell"]),
-  ticker: z.string().optional(),
+  ticker: z.union([
+    z.string().min(1, "Ticker is required").optional(),
+    z.literal("").transform(() => undefined),
+  ]),
   date: z.date({
     required_error: "Transaction date is required",
   }),
   price: z.number().positive("Amount must be positive"),
-  shares: z.number().int().optional(),
+  shares: z
+    .number()
+    .int()
+    .positive("Number of shares must be a positive integer")
+    .optional(),
 });
 
 interface TransactionDialogProps {
@@ -141,9 +148,18 @@ export function TransactionDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {size === "default" ? (
-          <Button variant="default" className={className}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Transaction
+          <Button
+            variant="default"
+            size="icon"
+            className={cn(
+              "group transition-all duration-300 ease-in-out hover:w-40",
+              className,
+            )}
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden font-semibold group-hover:inline-flex">
+              Add Transaction
+            </span>
           </Button>
         ) : (
           <Button variant="ghost" size="icon" className={className}>

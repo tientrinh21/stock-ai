@@ -7,6 +7,7 @@ import { TransactionDialog } from "@/components/transaction-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -42,6 +43,7 @@ import {
   AreaChart,
   CartesianGrid,
   Cell,
+  Dot,
   Pie,
   PieChart,
   XAxis,
@@ -191,9 +193,35 @@ export function Portfolio() {
   const performanceData = userData.transactions
     .slice(showAllPerformance ? 0 : -7)
     .map((transaction) => ({
+      id: transaction.id,
       date: transaction.trade_date,
       value: transaction.price * (transaction.shares ?? 1),
+      transactionType: transaction.transaction_type,
+      fill: `var(--color-${transaction.transaction_type})`,
     }));
+
+  const performanceChartConfig = {
+    value: {
+      label: "Transaction Value",
+      color: "hsl(var(--chart-1))",
+    },
+    buy: {
+      label: "Buy",
+      color: "hsl(var(--chart-4))",
+    },
+    sell: {
+      label: "Sell",
+      color: "hsl(var(--chart-3))",
+    },
+    deposit: {
+      label: "Deposit",
+      color: "hsl(var(--chart-2))",
+    },
+    withdraw: {
+      label: "Withdrawal",
+      color: "hsl(var(--chart-5))",
+    },
+  } satisfies ChartConfig;
 
   // Holdings calculation
   const filteredHoldings = userData?.holdings.filter((holding) => {
@@ -396,7 +424,11 @@ export function Portfolio() {
                     />
                   ))}
                 </Pie>
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent hideLabel className="w-[150px]" />
+                  }
+                />
               </PieChart>
             </ChartContainer>
           </CardContent>
@@ -462,12 +494,7 @@ export function Portfolio() {
           </CardHeader>
           <CardContent>
             <ChartContainer
-              config={{
-                value: {
-                  label: "Transaction Value",
-                  color: "hsl(var(--chart-1))",
-                },
-              }}
+              config={performanceChartConfig}
               className="h-[300px] w-full"
             >
               <AreaChart data={performanceData}>
@@ -475,7 +502,12 @@ export function Portfolio() {
                 <XAxis dataKey="date" />
                 <YAxis />
                 <ChartTooltip
-                  content={<ChartTooltipContent className="w-[175px]" />}
+                  content={
+                    <ChartTooltipContent
+                      className="w-[175px]"
+                      nameKey="transactionType"
+                    />
+                  }
                 />
                 <Area
                   type="monotone"
@@ -483,6 +515,27 @@ export function Portfolio() {
                   stroke="var(--color-value)"
                   fill="var(--color-value)"
                   fillOpacity={0.2}
+                  dot={({ payload, ...props }) => {
+                    return (
+                      <Dot
+                        key={payload.id}
+                        r={2}
+                        cx={props.cx}
+                        cy={props.cy}
+                        fill={payload.fill}
+                      />
+                    );
+                  }}
+                  activeDot={({ payload, ...props }) => {
+                    return (
+                      <Dot
+                        r={4}
+                        cx={props.cx}
+                        cy={props.cy}
+                        fill={payload.fill}
+                      />
+                    );
+                  }}
                 />
               </AreaChart>
             </ChartContainer>

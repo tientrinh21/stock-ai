@@ -10,8 +10,10 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Dot,
 } from "recharts";
 import {
+  ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -162,9 +164,35 @@ export function Dashboard() {
   const performanceData = userData.transactions
     .slice(-7)
     .map((transaction) => ({
+      id: transaction.id,
       date: transaction.trade_date,
       value: transaction.price * (transaction.shares ?? 1),
+      transactionType: transaction.transaction_type,
+      fill: `var(--color-${transaction.transaction_type})`,
     }));
+
+  const performanceChartConfig = {
+    value: {
+      label: "Transaction Value",
+      color: "hsl(var(--chart-1))",
+    },
+    buy: {
+      label: "Buy",
+      color: "hsl(var(--chart-4))",
+    },
+    sell: {
+      label: "Sell",
+      color: "hsl(var(--chart-3))",
+    },
+    deposit: {
+      label: "Deposit",
+      color: "hsl(var(--chart-2))",
+    },
+    withdraw: {
+      label: "Withdrawal",
+      color: "hsl(var(--chart-5))",
+    },
+  } satisfies ChartConfig;
 
   // Watchlist filtering
   const filteredWatchlist = userData?.watchlist.filter((element) => {
@@ -340,7 +368,11 @@ export function Dashboard() {
                     />
                   ))}
                 </Pie>
-                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent hideLabel className="w-[150px]" />
+                  }
+                />
               </PieChart>
             </ChartContainer>
           </CardContent>
@@ -353,12 +385,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <ChartContainer
-              config={{
-                value: {
-                  label: "Transaction Value",
-                  color: "hsl(var(--chart-1))",
-                },
-              }}
+              config={performanceChartConfig}
               className="h-[300px] w-full"
             >
               <AreaChart data={performanceData}>
@@ -374,6 +401,27 @@ export function Dashboard() {
                   stroke="var(--color-value)"
                   fill="var(--color-value)"
                   fillOpacity={0.2}
+                  dot={({ payload, ...props }) => {
+                    return (
+                      <Dot
+                        key={payload.id}
+                        r={2}
+                        cx={props.cx}
+                        cy={props.cy}
+                        fill={payload.fill}
+                      />
+                    );
+                  }}
+                  activeDot={({ payload, ...props }) => {
+                    return (
+                      <Dot
+                        r={4}
+                        cx={props.cx}
+                        cy={props.cy}
+                        fill={payload.fill}
+                      />
+                    );
+                  }}
                 />
               </AreaChart>
             </ChartContainer>
