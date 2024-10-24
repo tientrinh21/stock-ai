@@ -4,6 +4,7 @@ export interface StockData {
   longName: string;
   open: number;
   previousClose: number;
+  currentPrice: number;
   change: number;
   changePercent: number;
 }

@@ -43,6 +43,7 @@ import { FetchErrorAlert } from "@/components/fetch-error-alert";
 import { UserDetailsData } from "@/types/user";
 import { StockData } from "@/types/stock";
 import { moneyFormat } from "@/lib/utils";
+import { fetchStockData, fetchUserDetails } from "@/lib/request";
 
 export function Dashboard() {
   const [userData, setUserData] = useState<UserDetailsData | null>(null);
@@ -53,30 +54,14 @@ export function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/users/details", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch user data");
-        }
-        const data: UserDetailsData = await response.json();
-        setUserData(data);
+        // Only fetch user details once if not existed yet
+        const newUserData = userData ?? (await fetchUserDetails());
+        setUserData(newUserData);
 
-        // Fetch real-time stock data for holdings
-        const stockPromises = data.holdings.map(async (holding) => {
-          const response = await fetch(`/api/stocks/${holding.ticker}/quote`);
-          const quote: StockData = await response.json();
-          return quote;
-        });
-
-        const stockDataResults = await Promise.all(stockPromises);
-        setStockData(stockDataResults);
+        const newStockData = await fetchStockData(newUserData);
+        setStockData(newStockData);
       } catch (err) {
         setError("An error occurred while fetching data");
         console.error(err);
@@ -86,6 +71,10 @@ export function Dashboard() {
     };
 
     fetchData();
+
+    // Set up an interval to fetch data every 10 seconds
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   if (isLoading) return <SpinnerLoading />;
@@ -96,7 +85,7 @@ export function Dashboard() {
     const stockInfo = stockData.find(
       (stock) => stock.ticker === holding.ticker,
     );
-    return total + (stockInfo ? stockInfo.open * holding.shares : 0);
+    return total + (stockInfo ? stockInfo.currentPrice * holding.shares : 0);
   }, 0);
 
   const portfolioPerformance =
@@ -132,7 +121,7 @@ export function Dashboard() {
     return (
       total +
       (stockInfo
-        ? (stockInfo.open - stockInfo.previousClose) * holding.shares
+        ? (stockInfo.currentPrice - stockInfo.previousClose) * holding.shares
         : 0)
     );
   }, 0);
@@ -156,7 +145,7 @@ export function Dashboard() {
 
     return {
       name: holding.ticker,
-      value: stockInfo ? stockInfo.open * holding.shares : 0,
+      value: stockInfo ? stockInfo.currentPrice * holding.shares : 0,
     };
   });
 
@@ -449,6 +438,7 @@ export function Dashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>Ticker</TableHead>
+                <TableHead>Open</TableHead>
                 <TableHead>Previous Close</TableHead>
                 <TableHead>Current Price</TableHead>
                 <TableHead>Change</TableHead>
@@ -468,10 +458,11 @@ export function Dashboard() {
                         {stockInfo?.shortName}
                       </span>
                     </TableCell>
+                    <TableCell>${stockInfo?.open.toFixed(2)}</TableCell>
                     <TableCell>
                       ${stockInfo?.previousClose.toFixed(2)}
                     </TableCell>
-                    <TableCell>${stockInfo?.open.toFixed(2)}</TableCell>
+                    <TableCell>${stockInfo?.currentPrice.toFixed(2)}</TableCell>
                     <TableCell>
                       <StockChange
                         change={stockInfo?.change ?? 0}

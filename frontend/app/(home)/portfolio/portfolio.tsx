@@ -619,11 +619,13 @@ export function Portfolio() {
               {sortedHoldings?.map((holding) => {
                 return (
                   <TableRow key={holding.ticker}>
-                    <TableCell className="flex flex-col font-medium">
-                      <span>{holding.ticker}</span>
-                      <span className="text-xs font-thin">
-                        {holding.shortName}
-                      </span>
+                    <TableCell className="font-medium md:hidden">
+                      <div className="flex flex-col justify-center">
+                        <span>{holding.ticker}</span>
+                        <span className="text-xs font-thin">
+                          {holding.shortName}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>{holding.shares}</TableCell>
                     <TableCell>

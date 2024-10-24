@@ -22,14 +22,20 @@ export function StockChange({
         className,
       )}
     >
-      {change >= 0 ? (
-        <ArrowUpRight className="inline h-4 w-4" />
-      ) : (
-        <ArrowDownRight className="inline h-4 w-4" />
-      )}
-      {moneyFormat(Math.abs(change), unit !== "%" ? unit : "")}
-      {unit === "%" && unit}
-      {percentChange ? ` (${Math.abs(percentChange).toFixed(2)}%)` : ""}
+      <div className="inline-flex items-baseline">
+        {change >= 0 ? (
+          <ArrowUpRight className="inline h-4 w-4 place-self-center" />
+        ) : (
+          <ArrowDownRight className="inline h-4 w-4 place-self-end" />
+        )}
+        <span>
+          {moneyFormat(Math.abs(change), unit !== "%" ? unit : "")}
+          {unit === "%" && unit}
+        </span>
+      </div>
+      <span>
+        {percentChange ? ` (${Math.abs(percentChange).toFixed(2)}%)` : ""}
+      </span>
 
       <span className="text-muted-foreground">
         {extraText ? ` ${extraText}` : ""}

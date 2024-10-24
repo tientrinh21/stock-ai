@@ -63,6 +63,10 @@ export function Watchlist() {
 
   useEffect(() => {
     fetchData();
+
+    // Set up an interval to fetch data every 10 seconds
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   if (isLoading) return <SpinnerLoading />;
@@ -186,6 +190,7 @@ export function Watchlist() {
               <TableRow>
                 <TableHead>Ticker</TableHead>
                 <TableHead className="hidden md:table-cell">Name</TableHead>
+                <TableHead>Open</TableHead>
                 <TableHead>Previous Close</TableHead>
                 <TableHead>Current Price</TableHead>
                 <TableHead>Change</TableHead>
@@ -199,11 +204,13 @@ export function Watchlist() {
 
                 return (
                   <TableRow key={element.id}>
-                    <TableCell className="flex flex-col font-medium md:hidden">
-                      <span>{element.ticker}</span>
-                      <span className="text-xs font-thin">
-                        {stockInfo?.shortName}
-                      </span>
+                    <TableCell className="font-medium md:hidden">
+                      <div className="flex flex-col justify-center">
+                        <span>{element.ticker}</span>
+                        <span className="text-xs font-thin">
+                          {stockInfo?.shortName}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {element.ticker}
@@ -211,10 +218,11 @@ export function Watchlist() {
                     <TableCell className="hidden md:table-cell">
                       {stockInfo?.shortName}
                     </TableCell>
+                    <TableCell>${stockInfo?.open.toFixed(2)}</TableCell>
                     <TableCell>
                       ${stockInfo?.previousClose.toFixed(2)}
                     </TableCell>
-                    <TableCell>${stockInfo?.open.toFixed(2)}</TableCell>
+                    <TableCell>${stockInfo?.currentPrice.toFixed(2)}</TableCell>
                     <TableCell>
                       <StockChange
                         change={stockInfo?.change ?? 0}
