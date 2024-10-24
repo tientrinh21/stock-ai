@@ -64,10 +64,14 @@ def seed_data():
     # Example tickers for testing
     tickers = ["AAPL", "AMZN", "MSFT", "INTC", "TSLA", "^GSPC"]
 
+    print("\n======================\nFetching stock data...\n======================\n")
+
     for ticker in tickers:
         insert_stock_data(ticker, db)
 
-    print("Data seeded successfully.")
+    print(
+        "\n=========================\nData fetched successfully.\n=========================\n"
+    )
 
 
 if __name__ == "__main__":

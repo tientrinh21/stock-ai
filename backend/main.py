@@ -1,4 +1,5 @@
-from sqlalchemy import and_
+import time
+import threading
 import uvicorn
 import yfinance as yf
 import pandas as pd
@@ -6,12 +7,15 @@ import pandas as pd
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
 
 from app.database import engine, get_db
 from app import models, schemas, auth
+
+from seed import seed_data
 
 df_sp500 = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
 tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
@@ -83,7 +87,8 @@ def get_stock_quote(ticker: str):
 
         open = quote_data.get("regularMarketOpen") or float("nan")
         previousClose = quote_data.get("regularMarketPreviousClose") or float("nan")
-        change = round(open - previousClose, 2)
+        currentPrice = quote_data.get("currentPrice") or float("nan")
+        change = round(currentPrice - previousClose, 2)
         changePercent = round(change / previousClose * 100, 2)
 
         return {
@@ -92,6 +97,7 @@ def get_stock_quote(ticker: str):
             "longName": quote_data.get("longName", ticker_upper),
             "open": open,
             "previousClose": previousClose,
+            "currentPrice": currentPrice,
             "change": change,
             "changePercent": changePercent,
         }
@@ -197,6 +203,10 @@ def execute_transaction(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    transaction_ticker_upper = (
+        transaction.ticker.upper() if transaction.ticker is not None else None
+    )
+
     db_transaction = models.Transaction()
 
     # Handle the trade_date logic (use the provided date or default to today)
@@ -244,13 +254,13 @@ def execute_transaction(
             db.query(models.Watchlist)
             .filter(
                 models.Watchlist.user_id == current_user.id,
-                models.Watchlist.ticker == transaction.ticker.upper(),
+                models.Watchlist.ticker == transaction_ticker_upper,
             )
             .first()
         )
         if not watchlist_item:
             new_watchlist_item = models.Watchlist(
-                user_id=current_user.id, ticker=transaction.ticker.upper()
+                user_id=current_user.id, ticker=transaction_ticker_upper
             )
             db.add(new_watchlist_item)
 
@@ -259,7 +269,7 @@ def execute_transaction(
             db.query(models.StockHolding)
             .filter(
                 models.StockHolding.user_id == current_user.id,
-                models.StockHolding.ticker == transaction.ticker,
+                models.StockHolding.ticker == transaction_ticker_upper,
             )
             .first()
         )
@@ -268,7 +278,7 @@ def execute_transaction(
         else:
             holding = models.StockHolding(
                 user_id=current_user.id,
-                ticker=transaction.ticker,
+                ticker=transaction_ticker_upper,
                 shares=transaction.shares,
             )
             db.add(holding)
@@ -276,7 +286,7 @@ def execute_transaction(
         db_transaction = models.Transaction(
             user_id=current_user.id,
             transaction_type="buy",
-            ticker=transaction.ticker,
+            ticker=transaction_ticker_upper,
             shares=transaction.shares,
             price=transaction.price,
             trade_date=trade_date,
@@ -291,7 +301,7 @@ def execute_transaction(
             db.query(models.StockHolding)
             .filter(
                 models.StockHolding.user_id == current_user.id,
-                models.StockHolding.ticker == transaction.ticker,
+                models.StockHolding.ticker == transaction_ticker_upper,
             )
             .first()
         )
@@ -307,7 +317,7 @@ def execute_transaction(
         db_transaction = models.Transaction(
             user_id=current_user.id,
             transaction_type="sell",
-            ticker=transaction.ticker,
+            ticker=transaction_ticker_upper,
             shares=transaction.shares,
             price=transaction.price,
             trade_date=trade_date,
@@ -388,6 +398,19 @@ def delete_from_watchlist(
 
     return {"message": f"{ticker} removed from watchlist"}
 
+
+# Continuous data seeding in the background
+def continuous_seed():
+    while True:
+        seed_data()
+        time.sleep(60 * 30)  # Run every 30 minutes
+
+
+def start_background_task():
+    threading.Thread(target=continuous_seed, daemon=True).start()
+
+
+start_background_task()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
