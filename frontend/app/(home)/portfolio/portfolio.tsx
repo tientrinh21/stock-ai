@@ -1,11 +1,19 @@
 "use client";
 
+import { FetchErrorAlert } from "@/components/fetch-error-alert";
+import { SpinnerLoading } from "@/components/spinner-loading";
+import { StockChange } from "@/components/stock-change";
+import { TransactionDialog } from "@/components/transaction-dialog";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -14,82 +22,237 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { moneyFormat } from "@/lib/utils";
+import { StockData } from "@/types/stock";
+import { UserDetailsData } from "@/types/user";
 import {
-  ArrowDownRight,
-  ArrowUpRight,
+  Activity,
+  AreaChartIcon,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
   DollarSign,
   PieChart as PieChartIcon,
+  Search,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { useState } from "react";
-import { Cell, Pie, PieChart } from "recharts";
-
-const portfolioSummary = {
-  totalValue: 52750.25,
-  totalGain: 2750.25,
-  totalGainPercentage: 5.5,
-};
-
-const portfolioHoldings = [
-  {
-    symbol: "AAPL",
-    name: "Apple Inc.",
-    quantity: 50,
-    avgCost: 130,
-    currentPrice: 150.25,
-    totalValue: 7512.5,
-    gain: 1012.5,
-    gainPercentage: 15.6,
-  },
-  {
-    symbol: "GOOGL",
-    name: "Alphabet Inc.",
-    quantity: 10,
-    avgCost: 2500,
-    currentPrice: 2800.75,
-    totalValue: 28007.5,
-    gain: 3007.5,
-    gainPercentage: 12.0,
-  },
-  {
-    symbol: "MSFT",
-    name: "Microsoft Corporation",
-    quantity: 30,
-    avgCost: 280,
-    currentPrice: 305.5,
-    totalValue: 9165.0,
-    gain: 765.0,
-    gainPercentage: 9.1,
-  },
-  {
-    symbol: "AMZN",
-    name: "Amazon.com Inc.",
-    quantity: 5,
-    avgCost: 3100,
-    currentPrice: 3320.0,
-    totalValue: 16600.0,
-    gain: 1100.0,
-    gainPercentage: 7.1,
-  },
-];
-
-const portfolioAllocation = [
-  { name: "AAPL", value: 7512.5 },
-  { name: "GOOGL", value: 28007.5 },
-  { name: "MSFT", value: 9165.0 },
-  { name: "AMZN", value: 16600.0 },
-];
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+import { useEffect, useState } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export function Portfolio() {
+  const [userData, setUserData] = useState<UserDetailsData | null>(null);
+  const [stockData, setStockData] = useState<StockData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [showAllPerformance, setShowAllPerformace] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "ascending" | "descending";
   } | null>(null);
 
-  const sortedHoldings = [...portfolioHoldings].sort((a, b) => {
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    const fetchData = async () => {
+      try {
+        const response = await fetch("/api/users/details", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+        const data: UserDetailsData = await response.json();
+        setUserData(data);
+
+        // Fetch real-time stock data for holdings
+        const stockPromises = data.holdings.map(async (holding) => {
+          const response = await fetch(`/api/stocks/${holding.ticker}/quote`);
+          const quote: StockData = await response.json();
+          return quote;
+        });
+
+        const stockDataResults = await Promise.all(stockPromises);
+        setStockData(stockDataResults);
+      } catch (err) {
+        setError("An error occurred while fetching data");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (isLoading) return <SpinnerLoading />;
+  if (error || !userData) return <FetchErrorAlert error={error} />;
+
+  // Portfolio Value calculation
+  const totalPortfolioValue = userData.holdings.reduce((total, holding) => {
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === holding.ticker,
+    );
+    return total + (stockInfo ? stockInfo.open * holding.shares : 0);
+  }, 0);
+
+  const portfolioPerformance =
+    stockData.reduce((total, stock) => total + stock.changePercent, 0) /
+    stockData.length;
+
+  // Total Profit calculation
+  const totalInvestmentFromBuys = userData.transactions
+    .filter((transaction) => transaction.transaction_type === "buy")
+    .reduce(
+      (total, transaction) =>
+        total + transaction.price * (transaction.shares ?? 1),
+      0,
+    );
+
+  const totalProceedsFromSells = userData.transactions
+    .filter((transaction) => transaction.transaction_type === "sell")
+    .reduce(
+      (total, transaction) =>
+        total + transaction.price * (transaction.shares ?? 1),
+      0,
+    );
+
+  const netInvestment = totalInvestmentFromBuys - totalProceedsFromSells;
+  const totalProfit = totalPortfolioValue - netInvestment;
+  const totalChangePercent = (totalProfit / netInvestment) * 100;
+
+  // Today's Change calculation
+  const todaysChange = userData.holdings.reduce((total, holding) => {
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === holding.ticker,
+    );
+    return (
+      total +
+      (stockInfo
+        ? (stockInfo.open - stockInfo.previousClose) * holding.shares
+        : 0)
+    );
+  }, 0);
+
+  const todaysChangePercent = (todaysChange / totalPortfolioValue) * 100;
+
+  // Active Positions calculation
+  const activePositions = userData.holdings.filter(
+    (holding) => holding.shares > 0,
+  );
+  const numberOfActivePositions = activePositions.length;
+  const numberOfStocks = new Set(
+    userData.holdings.map((holding) => holding.ticker),
+  ).size;
+
+  // Best and Worst Performer by Percentage Change
+  const bestPerformer = stockData.reduce((best: StockData | null, stock) => {
+    const holding = userData.holdings.find((h) => h.ticker === stock.ticker);
+    if (!holding || holding.shares === 0) return best;
+    return stock.changePercent > (best?.changePercent || -Infinity)
+      ? stock
+      : best;
+  }, null);
+
+  const worstPerformer = stockData.reduce((worst: StockData | null, stock) => {
+    const holding = userData.holdings.find((h) => h.ticker === stock.ticker);
+    if (!holding) return worst;
+    return stock.changePercent < (worst?.changePercent || Infinity)
+      ? stock
+      : worst;
+  }, null);
+
+  // Portfolio Allocation data mapping
+  const pieChartData = activePositions.map((holding) => {
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === holding.ticker,
+    );
+
+    return {
+      name: holding.ticker,
+      value: stockInfo ? stockInfo.open * holding.shares : 0,
+    };
+  });
+
+  // Recent Performance data mapping
+  const performanceData = userData.transactions
+    .slice(showAllPerformance ? 0 : -7)
+    .map((transaction) => ({
+      date: transaction.trade_date,
+      value: transaction.price * (transaction.shares ?? 1),
+    }));
+
+  // Holdings calculation
+  const filteredHoldings = userData?.holdings.filter((holding) => {
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === holding.ticker,
+    );
+
+    return (
+      holding.shares > 0 &&
+      (stockInfo?.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        stockInfo?.shortName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        stockInfo?.longName.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  });
+
+  const calculatedHoldings = filteredHoldings.map((holding) => {
+    // Get all buy transactions for this holding
+    const buyTransactions = userData?.transactions.filter(
+      (transaction) =>
+        transaction.ticker === holding.ticker &&
+        transaction.transaction_type === "buy",
+    );
+
+    // Calculate total cost and total shares bought
+    const totalCost = buyTransactions.reduce(
+      (total, transaction) => total + transaction.price * transaction.shares!,
+      0,
+    );
+
+    const totalSharesBought = buyTransactions.reduce(
+      (total, transaction) => total + transaction.shares!,
+      0,
+    );
+
+    // Calculate the average cost per share
+    const averageCost =
+      totalSharesBought > 0 ? totalCost / totalSharesBought : 0;
+
+    const stockInfo = stockData.find(
+      (stock) => stock.ticker === holding.ticker,
+    );
+
+    const marketValue = stockInfo ? stockInfo.open * holding.shares : -Infinity;
+    const gain = marketValue ? marketValue - totalCost : -Infinity;
+
+    return {
+      ticker: holding.ticker,
+      shortName: stockInfo ? stockInfo.shortName : "",
+      shares: holding.shares,
+      open: stockInfo ? stockInfo.open : -Infinity,
+      averageCost,
+      totalCost,
+      marketValue,
+      gain,
+    };
+  });
+
+  // Holdings table column sorting
+  const sortedHoldings = [...calculatedHoldings].sort((a, b) => {
     if (!sortConfig) return 0;
     const aValue = a[sortConfig.key as keyof typeof a];
     const bValue = b[sortConfig.key as keyof typeof b];
@@ -111,84 +274,77 @@ export function Portfolio() {
   };
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mt-2 max-w-screen-2xl md:mt-6">
       <h1 className="mb-6 text-3xl font-bold">Portfolio</h1>
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
+
+      <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Portfolio Value
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${portfolioSummary.totalValue.toLocaleString()}
+              {moneyFormat(totalPortfolioValue)}
             </div>
+            <StockChange
+              change={portfolioPerformance}
+              unit="%"
+              extraText="from yesterday"
+            />
           </CardContent>
+
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{moneyFormat(totalProfit)}</div>
+            <StockChange
+              change={totalChangePercent}
+              unit="%"
+              extraText="from initial investment"
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Gain/Loss
+              Active Positions
+            </CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{numberOfActivePositions}</div>
+            <span className="text-xs text-muted-foreground">
+              Across {numberOfStocks} different stocks
+            </span>
+          </CardContent>
+
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Today&apos;s Change
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${portfolioSummary.totalGain.toLocaleString()}
+              {moneyFormat(todaysChange)}
             </div>
-            <p
-              className={`text-xs ${portfolioSummary.totalGainPercentage >= 0 ? "text-green-600" : "text-red-600"}`}
-            >
-              {portfolioSummary.totalGainPercentage >= 0 ? (
-                <ArrowUpRight className="inline h-4 w-4" />
-              ) : (
-                <ArrowDownRight className="inline h-4 w-4" />
-              )}
-              {Math.abs(portfolioSummary.totalGainPercentage)}%
-            </p>
+            <StockChange
+              change={todaysChangePercent}
+              unit="%"
+              extraText="from yesterday"
+            />
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Performer</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">AAPL</div>
-            <p
-              className={`text-xs ${2.5 >= 0 ? "text-green-600" : "text-red-600"}`}
-            >
-              {2.5 >= 0 ? (
-                <ArrowUpRight className="inline h-4 w-4" />
-              ) : (
-                <ArrowDownRight className="inline h-4 w-4" />
-              )}
-              {Math.abs(2.5)}% today
-            </p>
-          </CardContent>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Worst Performer
-            </CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">GOOGL</div>
-            <p
-              className={`text-xs ${-1.2 >= 0 ? "text-green-600" : "text-red-600"}`}
-            >
-              {-1.2 >= 0 ? (
-                <ArrowUpRight className="inline h-4 w-4" />
-              ) : (
-                <ArrowDownRight className="inline h-4 w-4" />
-              )}
-              {Math.abs(-1.2)}% today
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Portfolio Allocation
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+            <CardTitle>Portfolio Allocation</CardTitle>
             <PieChartIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -196,14 +352,13 @@ export function Portfolio() {
               config={{
                 value: {
                   label: "Allocation",
-                  color: "hsl(var(--chart-1))",
                 },
               }}
-              className="h-[200px] w-full"
+              className="h-[220px] w-full"
             >
               <PieChart>
                 <Pie
-                  data={portfolioAllocation}
+                  data={pieChartData}
                   cx="50%"
                   cy="50%"
                   label={({ payload, ...props }) => {
@@ -224,20 +379,20 @@ export function Portfolio() {
                           dy="1.2em"
                           fill="hsla(var(--foreground))"
                         >
-                          {payload.value}
+                          {moneyFormat(payload.value)}
                         </tspan>
                       </text>
                     );
                   }}
                   labelLine={false}
                   outerRadius={80}
-                  fill="#8884d8"
+                  fill="hsla(var(--foreground))"
                   dataKey="value"
                 >
-                  {portfolioAllocation.map((entry, index) => (
+                  {pieChartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
+                      fill={`hsl(var(--chart-${(index + 1) % 5}))`}
                     />
                   ))}
                 </Pie>
@@ -246,85 +401,259 @@ export function Portfolio() {
             </ChartContainer>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+            <CardTitle>Top/Worst</CardTitle>
+            <PieChartIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Top Performer</CardTitle>
+            {bestPerformer!.change >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{bestPerformer!.ticker}</div>
+            <StockChange
+              change={bestPerformer!.change}
+              percentChange={bestPerformer!.changePercent}
+              extraText="from yesterday"
+            />
+          </CardContent>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Worst Performer
+            </CardTitle>
+            {worstPerformer!.change >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{worstPerformer!.ticker}</div>
+            <StockChange
+              change={worstPerformer!.change}
+              percentChange={worstPerformer!.changePercent}
+              extraText="from yesterday"
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+            <CardTitle>Recent Performance</CardTitle>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="show-all" className="text-xs">
+                  Show all
+                </Label>
+                <Switch
+                  id="show-all"
+                  checked={showAllPerformance}
+                  onCheckedChange={setShowAllPerformace}
+                />
+              </div>
+              <AreaChartIcon className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                value: {
+                  label: "Transaction Value",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="h-[300px] w-full"
+            >
+              <AreaChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <ChartTooltip
+                  content={<ChartTooltipContent className="w-[175px]" />}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--color-value)"
+                  fill="var(--color-value)"
+                  fillOpacity={0.2}
+                />
+              </AreaChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
       </div>
+
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-3">
           <CardTitle>Holdings</CardTitle>
+          <div className="flex w-full max-w-sm items-center space-x-2">
+            <Input
+              type="text"
+              placeholder="Search stocks"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Button type="submit" size="icon">
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => requestSort("symbol")}
+                <SortingTableHead
+                  sortKey="ticker"
+                  sortConfig={sortConfig}
+                  requestSort={requestSort}
                 >
-                  Symbol
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => requestSort("name")}
+                  Ticker
+                </SortingTableHead>
+                <SortingTableHead
+                  sortKey="shares"
+                  sortConfig={sortConfig}
+                  requestSort={requestSort}
                 >
-                  Name
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => requestSort("quantity")}
-                >
-                  Quantity
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => requestSort("avgCost")}
-                >
-                  Avg Cost
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => requestSort("currentPrice")}
+                  Shares
+                </SortingTableHead>
+                <SortingTableHead
+                  sortKey="open"
+                  sortConfig={sortConfig}
+                  requestSort={requestSort}
                 >
                   Current Price
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => requestSort("totalValue")}
+                </SortingTableHead>
+                <SortingTableHead
+                  sortKey="averageCost"
+                  sortConfig={sortConfig}
+                  requestSort={requestSort}
                 >
-                  Total Value
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => requestSort("gain")}
+                  Avg Cost
+                </SortingTableHead>
+                <SortingTableHead
+                  sortKey="totalCost"
+                  sortConfig={sortConfig}
+                  requestSort={requestSort}
+                >
+                  Total Cost
+                </SortingTableHead>
+                <SortingTableHead
+                  sortKey="marketValue"
+                  sortConfig={sortConfig}
+                  requestSort={requestSort}
+                >
+                  Market Value
+                </SortingTableHead>
+                <SortingTableHead
+                  sortKey="gain"
+                  sortConfig={sortConfig}
+                  requestSort={requestSort}
                 >
                   Gain/Loss
-                </TableHead>
+                </SortingTableHead>
+
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedHoldings.map((holding) => (
-                <TableRow key={holding.symbol}>
-                  <TableCell className="font-medium">
-                    {holding.symbol}
-                  </TableCell>
-                  <TableCell>{holding.name}</TableCell>
-                  <TableCell>{holding.quantity}</TableCell>
-                  <TableCell>${holding.avgCost.toFixed(2)}</TableCell>
-                  <TableCell>${holding.currentPrice.toFixed(2)}</TableCell>
-                  <TableCell>${holding.totalValue.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <span
-                      className={
-                        holding.gain >= 0 ? "text-green-600" : "text-red-600"
-                      }
-                    >
-                      ${holding.gain.toFixed(2)} ({holding.gainPercentage}%)
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {sortedHoldings?.map((holding) => {
+                return (
+                  <TableRow key={holding.ticker}>
+                    <TableCell className="flex flex-col font-medium">
+                      <span>{holding.ticker}</span>
+                      <span className="text-xs font-thin">
+                        {holding.shortName}
+                      </span>
+                    </TableCell>
+                    <TableCell>{holding.shares}</TableCell>
+                    <TableCell>
+                      {holding.shares > 0 && holding.open !== -Infinity
+                        ? moneyFormat(holding.open)
+                        : "--"}
+                    </TableCell>
+                    <TableCell>
+                      {holding.shares > 0 && holding.averageCost !== -Infinity
+                        ? moneyFormat(holding.averageCost)
+                        : "--"}
+                    </TableCell>
+                    <TableCell>
+                      {holding.shares > 0 && holding.totalCost !== -Infinity
+                        ? moneyFormat(holding.totalCost)
+                        : "--"}
+                    </TableCell>
+                    <TableCell>
+                      {holding.shares > 0 && holding.marketValue !== -Infinity
+                        ? moneyFormat(holding.marketValue)
+                        : "--"}
+                    </TableCell>
+                    <TableCell>
+                      {holding.shares > 0 &&
+                      holding.gain !== -Infinity &&
+                      holding.totalCost !== -Infinity ? (
+                        <StockChange
+                          change={holding.gain}
+                          percentChange={holding.gain / holding.totalCost}
+                          className="text-sm"
+                        />
+                      ) : (
+                        "--"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <TransactionDialog ticker={holding.ticker} size="icon" />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      <TransactionDialog className="fixed bottom-5 right-5" />
     </div>
+  );
+}
+
+interface ISortingTableHead {
+  sortKey: string;
+  children: React.ReactNode;
+  sortConfig: {
+    key: string;
+    direction: "ascending" | "descending";
+  } | null;
+  requestSort: (key: string) => void;
+}
+
+function SortingTableHead({
+  children,
+  sortKey,
+  sortConfig,
+  requestSort,
+}: ISortingTableHead) {
+  return (
+    <TableHead
+      className="cursor-pointer hover:bg-secondary"
+      onClick={() => requestSort(sortKey)}
+    >
+      <div className="flex items-end justify-between">
+        {children}
+
+        {sortConfig && sortConfig.key === sortKey ? (
+          sortConfig.direction === "ascending" ? (
+            <ArrowDownWideNarrow className="h-4 w-4" />
+          ) : (
+            <ArrowUpNarrowWide className="h-4 w-4" />
+          )
+        ) : null}
+      </div>
+    </TableHead>
   );
 }
