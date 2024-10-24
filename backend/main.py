@@ -92,9 +92,11 @@ def get_stock_quote(ticker: str):
         # Fetch summary information using yfinance
         quote_data = stock.info
 
-        open = quote_data.get("regularMarketOpen") or float("nan")
-        previousClose = quote_data.get("regularMarketPreviousClose") or float("nan")
-        currentPrice = quote_data.get("currentPrice") or float("nan")
+        print(quote_data)
+
+        open = quote_data.get("regularMarketOpen", 0)
+        previousClose = quote_data.get("regularMarketPreviousClose", 0)
+        currentPrice = quote_data.get("currentPrice", 0)
         change = round(currentPrice - previousClose, 2)
         changePercent = round(change / previousClose * 100, 2)
 
