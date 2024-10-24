@@ -18,16 +18,16 @@ import { StockChange } from "@/components/stock-change";
 import { FetchErrorAlert } from "@/components/fetch-error-alert";
 import { SpinnerLoading } from "@/components/spinner-loading";
 import { AddWatchlistItemForm } from "@/components/add-watchlist-item-form";
-import { StockData } from "@/types/stock";
+import { StockQuote } from "@/types/stock";
 import { WatchlistItem } from "@/types/watchlist";
 import {
-  fetchStockData,
+  fetchStockQuotes,
   fetchWatchlist,
   removeFromWatchList,
 } from "@/lib/request";
 
 export function Watchlist() {
-  const [stockData, setStockData] = useState<StockData[]>([]);
+  const [stockQuotes, setStockQuotes] = useState<StockQuote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,8 +41,8 @@ export function Watchlist() {
 
       const tickers = newWatchList.map((item) => item.ticker);
 
-      const newStockData = await fetchStockData(tickers);
-      setStockData(newStockData);
+      const newStockQuotes = await fetchStockQuotes(tickers);
+      setStockQuotes(newStockQuotes);
     } catch (err) {
       setError("An error occurred while fetching data");
       console.error(err);
@@ -63,7 +63,7 @@ export function Watchlist() {
   if (error || !watchlist) return <FetchErrorAlert error={error} />;
 
   const filteredWatchlist = watchlist.filter((element) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === element.ticker,
     );
 
@@ -137,7 +137,7 @@ export function Watchlist() {
             </TableHeader>
             <TableBody>
               {filteredWatchlist?.map((element) => {
-                const stockInfo = stockData.find(
+                const stockInfo = stockQuotes.find(
                   (stock) => stock.ticker === element.ticker,
                 );
 

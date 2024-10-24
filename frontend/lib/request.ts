@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 
-import { StockData } from "@/types/stock";
+import { StockPrice, StockQuote } from "@/types/stock";
 import { UserDetailsData } from "@/types/user";
 import { WatchlistItem } from "@/types/watchlist";
 import { TransactionFormSchema } from "@/types/form-schema";
@@ -21,16 +21,26 @@ export const fetchUserDetails = async () => {
   return data;
 };
 
-// Fetch real-time stock data for holdings
-export const fetchStockData = async (tickers: string[]) => {
+export const fetchStockQuotes = async (tickers: string[]) => {
   const stockPromises = tickers.map(async (ticker) => {
     const response = await fetch(`/api/stocks/${ticker}/quote`);
-    const quote: StockData = await response.json();
+    const quote: StockQuote = await response.json();
     return quote;
   });
 
-  const stockDataResults = await Promise.all(stockPromises);
-  return stockDataResults;
+  const data = await Promise.all(stockPromises);
+  return data;
+};
+
+export const fetchStockPrice = async (ticker: string) => {
+  const response = await fetch(`/api/stocks/${ticker}`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch stock data");
+  }
+
+  const data: StockPrice[] = await response.json();
+  return data;
 };
 
 export const fetchWatchlist = async () => {

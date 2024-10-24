@@ -41,13 +41,13 @@ import { Button } from "@/components/ui/button";
 import { SpinnerLoading } from "@/components/spinner-loading";
 import { FetchErrorAlert } from "@/components/fetch-error-alert";
 import { UserDetailsData } from "@/types/user";
-import { StockData } from "@/types/stock";
+import { StockQuote } from "@/types/stock";
 import { moneyFormat } from "@/lib/utils";
-import { fetchStockData, fetchUserDetails } from "@/lib/request";
+import { fetchStockQuotes, fetchUserDetails } from "@/lib/request";
 
 export function Dashboard() {
   const [userData, setUserData] = useState<UserDetailsData | null>(null);
-  const [stockData, setStockData] = useState<StockData[]>([]);
+  const [stockQuotes, setStockQuotes] = useState<StockQuote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,8 +62,8 @@ export function Dashboard() {
 
         const tickers = newUserData.holdings.map((holding) => holding.ticker);
 
-        const newStockData = await fetchStockData(tickers);
-        setStockData(newStockData);
+        const newStockQuotes = await fetchStockQuotes(tickers);
+        setStockQuotes(newStockQuotes);
       } catch (err) {
         setError("An error occurred while fetching data");
         console.error(err);
@@ -84,15 +84,15 @@ export function Dashboard() {
 
   // Portfolio Value calculation
   const totalPortfolioValue = userData.holdings.reduce((total, holding) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === holding.ticker,
     );
     return total + (stockInfo ? stockInfo.currentPrice * holding.shares : 0);
   }, 0);
 
   const portfolioPerformance =
-    stockData.reduce((total, stock) => total + stock.changePercent, 0) /
-    stockData.length;
+    stockQuotes.reduce((total, stock) => total + stock.changePercent, 0) /
+    stockQuotes.length;
 
   // Total Profit calculation
   const totalInvestmentFromBuys = userData.transactions
@@ -117,7 +117,7 @@ export function Dashboard() {
 
   // Today's Change calculation
   const todaysChange = userData.holdings.reduce((total, holding) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === holding.ticker,
     );
     return (
@@ -141,7 +141,7 @@ export function Dashboard() {
 
   // Portfolio Allocation data mapping
   const pieChartData = activePositions.map((holding) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === holding.ticker,
     );
 
@@ -187,7 +187,7 @@ export function Dashboard() {
 
   // Watchlist filtering
   const filteredWatchlist = userData?.watchlist.filter((element) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === element.ticker,
     );
 
@@ -448,7 +448,7 @@ export function Dashboard() {
             </TableHeader>
             <TableBody>
               {filteredWatchlist?.map((element) => {
-                const stockInfo = stockData.find(
+                const stockInfo = stockQuotes.find(
                   (stock) => stock.ticker === element.ticker,
                 );
 

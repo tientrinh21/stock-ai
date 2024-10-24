@@ -23,9 +23,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fetchStockData, fetchUserDetails } from "@/lib/request";
+import { fetchStockQuotes, fetchUserDetails } from "@/lib/request";
 import { moneyFormat } from "@/lib/utils";
-import { StockData } from "@/types/stock";
+import { StockQuote } from "@/types/stock";
 import { UserDetailsData } from "@/types/user";
 import {
   Activity,
@@ -53,7 +53,7 @@ import {
 
 export function Portfolio() {
   const [userData, setUserData] = useState<UserDetailsData | null>(null);
-  const [stockData, setStockData] = useState<StockData[]>([]);
+  const [stockQuotes, setStockQuotes] = useState<StockQuote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,8 +73,8 @@ export function Portfolio() {
 
       const tickers = newUserData.holdings.map((holding) => holding.ticker);
 
-      const newStockData = await fetchStockData(tickers);
-      setStockData(newStockData);
+      const newStockQuotes = await fetchStockQuotes(tickers);
+      setStockQuotes(newStockQuotes);
     } catch (err) {
       setError("An error occurred while fetching data");
       console.error(err);
@@ -96,15 +96,15 @@ export function Portfolio() {
 
   // Portfolio Value calculation
   const totalPortfolioValue = userData.holdings.reduce((total, holding) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === holding.ticker,
     );
     return total + (stockInfo ? stockInfo.open * holding.shares : 0);
   }, 0);
 
   const portfolioPerformance =
-    stockData.reduce((total, stock) => total + stock.changePercent, 0) /
-    stockData.length;
+    stockQuotes.reduce((total, stock) => total + stock.changePercent, 0) /
+    stockQuotes.length;
 
   // Total Profit calculation
   const totalInvestmentFromBuys = userData.transactions
@@ -129,7 +129,7 @@ export function Portfolio() {
 
   // Today's Change calculation
   const todaysChange = userData.holdings.reduce((total, holding) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === holding.ticker,
     );
     return (
@@ -152,7 +152,7 @@ export function Portfolio() {
   ).size;
 
   // Best and Worst Performer by Percentage Change
-  const bestPerformer = stockData.reduce((best: StockData | null, stock) => {
+  const bestPerformer = stockQuotes.reduce((best: StockQuote | null, stock) => {
     const holding = userData.holdings.find((h) => h.ticker === stock.ticker);
     if (!holding || holding.shares === 0) return best;
     return stock.changePercent > (best?.changePercent || -Infinity)
@@ -160,17 +160,20 @@ export function Portfolio() {
       : best;
   }, null);
 
-  const worstPerformer = stockData.reduce((worst: StockData | null, stock) => {
-    const holding = userData.holdings.find((h) => h.ticker === stock.ticker);
-    if (!holding) return worst;
-    return stock.changePercent < (worst?.changePercent || Infinity)
-      ? stock
-      : worst;
-  }, null);
+  const worstPerformer = stockQuotes.reduce(
+    (worst: StockQuote | null, stock) => {
+      const holding = userData.holdings.find((h) => h.ticker === stock.ticker);
+      if (!holding) return worst;
+      return stock.changePercent < (worst?.changePercent || Infinity)
+        ? stock
+        : worst;
+    },
+    null,
+  );
 
   // Portfolio Allocation data mapping
   const pieChartData = activePositions.map((holding) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === holding.ticker,
     );
 
@@ -216,7 +219,7 @@ export function Portfolio() {
 
   // Holdings calculation
   const filteredHoldings = userData?.holdings.filter((holding) => {
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === holding.ticker,
     );
 
@@ -251,7 +254,7 @@ export function Portfolio() {
     const averageCost =
       totalSharesBought > 0 ? totalCost / totalSharesBought : 0;
 
-    const stockInfo = stockData.find(
+    const stockInfo = stockQuotes.find(
       (stock) => stock.ticker === holding.ticker,
     );
 
