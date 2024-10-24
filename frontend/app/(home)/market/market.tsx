@@ -72,7 +72,7 @@ export default function Market() {
   );
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mt-2 max-w-screen-2xl md:mt-6">
       <h1 className="mb-6 text-3xl font-bold">Market Overview</h1>
 
       <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">

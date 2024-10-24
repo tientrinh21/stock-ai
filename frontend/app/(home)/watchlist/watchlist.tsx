@@ -143,7 +143,7 @@ export function Watchlist() {
   };
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mt-2 max-w-screen-2xl md:mt-6">
       <h1 className="mb-6 text-3xl font-bold">Watchlist</h1>
       <Card className="mb-6">
         <CardHeader>

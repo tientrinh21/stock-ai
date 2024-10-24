@@ -105,14 +105,16 @@ export function Dashboard() {
   const totalInvestmentFromBuys = userData.transactions
     .filter((transaction) => transaction.transaction_type === "buy")
     .reduce(
-      (total, transaction) => total + transaction.price * transaction.shares,
+      (total, transaction) =>
+        total + transaction.price * (transaction.shares ?? 1),
       0,
     );
 
   const totalProceedsFromSells = userData.transactions
     .filter((transaction) => transaction.transaction_type === "sell")
     .reduce(
-      (total, transaction) => total + transaction.price * transaction.shares,
+      (total, transaction) =>
+        total + transaction.price * (transaction.shares ?? 1),
       0,
     );
 
@@ -161,7 +163,7 @@ export function Dashboard() {
     .slice(-7)
     .map((transaction) => ({
       date: transaction.trade_date,
-      value: transaction.price * transaction.shares,
+      value: transaction.price * (transaction.shares ?? 1),
     }));
 
   // Watchlist filtering
@@ -178,7 +180,7 @@ export function Dashboard() {
   });
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mt-2 max-w-screen-2xl md:mt-6">
       <h1 className="mb-6 text-3xl font-bold">Dashboard</h1>
 
       <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -196,7 +198,7 @@ export function Dashboard() {
             <StockChange
               change={portfolioPerformance}
               unit="%"
-              extraText="from today"
+              extraText="from yesterday"
             />
           </CardContent>
         </Card>
