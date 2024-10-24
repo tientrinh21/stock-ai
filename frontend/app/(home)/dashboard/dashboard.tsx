@@ -306,7 +306,7 @@ export function Dashboard() {
 
       <div className="mb-6 grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
             <CardTitle>Portfolio Allocation</CardTitle>
             <PieChartIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -370,7 +370,7 @@ export function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
             <CardTitle>Recent Performance</CardTitle>
             <AreaChartIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>

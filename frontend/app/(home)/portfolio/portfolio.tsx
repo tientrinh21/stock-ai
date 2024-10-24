@@ -627,6 +627,9 @@ export function Portfolio() {
                         </span>
                       </div>
                     </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {holding.ticker}
+                    </TableCell>
                     <TableCell>{holding.shares}</TableCell>
                     <TableCell>
                       {holding.shares > 0 && holding.open !== -Infinity

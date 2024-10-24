@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link, { LinkProps } from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { VercelLogoIcon } from "@radix-ui/react-icons";
 
 import { navConfig } from "@/config/nav";
@@ -21,6 +21,7 @@ import {
 
 export function MobileNav() {
   const [open, setOpen] = React.useState(false);
+  const pathname = usePathname();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -79,6 +80,12 @@ export function MobileNav() {
                     key={item.href}
                     href={item.href}
                     onOpenChange={setOpen}
+                    className={cn(
+                      "transition-colors hover:text-foreground/80",
+                      pathname === item.href
+                        ? "text-foreground"
+                        : "text-foreground/60",
+                    )}
                   >
                     {item.title}
                   </MobileLink>
