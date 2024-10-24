@@ -317,7 +317,7 @@ export function Dashboard() {
                   label: "Allocation",
                 },
               }}
-              className="h-[300px] w-full"
+              className="aspect-auto h-[300px] w-full"
             >
               <PieChart>
                 <Pie
@@ -377,7 +377,7 @@ export function Dashboard() {
           <CardContent>
             <ChartContainer
               config={performanceChartConfig}
-              className="h-[300px] w-full"
+              className="aspect-auto h-[300px] w-full"
             >
               <AreaChart data={performanceData}>
                 <CartesianGrid strokeDasharray="3 3" />
