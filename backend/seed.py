@@ -58,8 +58,11 @@ def seed_data():
     db = SessionLocal()
 
     # You can uncomment this to fetch the S&P 500 tickers if needed
-    # df_sp500 = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
+    # df_sp500 = pd.read_html(
+    #     "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    # )[0]
     # tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in S&P 500
+    # tickers = tickers_sp500.append("^GSPC")  # Add S&P500 index
 
     # Example tickers for testing
     tickers = ["AAPL", "AMZN", "MSFT", "INTC", "TSLA", "^GSPC"]

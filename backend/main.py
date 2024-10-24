@@ -53,6 +53,9 @@ def read_stock_data(
     ticker_upper = ticker.upper()
     query = db.query(models.Stock).filter(models.Stock.ticker == ticker_upper)
 
+    if ticker_upper not in tickers_sp500:
+        raise HTTPException(status_code=400, detail="Ticker not found")
+
     # Set default end_date to today if not provided
     if end_date is None:
         end_date = datetime.now().date()
@@ -80,6 +83,10 @@ def read_stock_data(
 @app.get("/stocks/{ticker}/quote")
 def get_stock_quote(ticker: str):
     ticker_upper = ticker.upper()
+
+    if ticker_upper not in tickers_sp500:
+        raise HTTPException(status_code=400, detail="Ticker not found")
+
     try:
         stock = yf.Ticker(ticker_upper)
         # Fetch summary information using yfinance
@@ -238,6 +245,9 @@ def execute_transaction(
 
     # Handle "buy" transactions
     elif transaction.transaction_type == "buy":
+        if transaction_ticker_upper not in tickers_sp500:
+            raise HTTPException(status_code=400, detail="Ticker not found")
+
         if transaction.shares is None:
             raise HTTPException(status_code=400, detail="Invalid number of shares")
 
@@ -294,6 +304,9 @@ def execute_transaction(
 
     # Handle "sell" transactions
     elif transaction.transaction_type == "sell":
+        if transaction_ticker_upper not in tickers_sp500:
+            raise HTTPException(status_code=400, detail="Ticker not found")
+
         if transaction.shares is None:
             raise HTTPException(status_code=400, detail="Invalid number of shares")
 
