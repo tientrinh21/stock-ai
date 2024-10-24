@@ -62,7 +62,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 </div>
               </div>
             </AuthProvider>
-            <Toaster richColors />
+            <Toaster richColors duration={1500} />
           </ThemeProvider>
         </body>
       </html>

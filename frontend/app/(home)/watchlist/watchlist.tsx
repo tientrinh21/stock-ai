@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Plus, X } from "lucide-react";
+import { toast } from "sonner";
+import { Search, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -16,11 +17,10 @@ import { Button } from "@/components/ui/button";
 import { StockChange } from "@/components/stock-change";
 import { FetchErrorAlert } from "@/components/fetch-error-alert";
 import { SpinnerLoading } from "@/components/spinner-loading";
+import { AddWatchlistItemForm } from "@/components/add-watchlist-item-form";
 import { StockData } from "@/types/stock";
-import { toast } from "sonner";
 import { WatchlistItem } from "@/types/watchlist";
 import {
-  addToWatchList,
   fetchStockData,
   fetchWatchlist,
   removeFromWatchList,
@@ -33,7 +33,6 @@ export function Watchlist() {
 
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [newTicker, setNewTicker] = useState("");
 
   const fetchData = async () => {
     try {
@@ -75,30 +74,6 @@ export function Watchlist() {
     );
   });
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const toastId = "watchlistToast";
-    toast.loading("Adding to your watchlist...", { id: toastId });
-
-    try {
-      const response = await addToWatchList(newTicker);
-
-      if (response.ok) {
-        toast.success("Succesfully added.", { id: toastId });
-        fetchData();
-      } else {
-        const result = await response.json();
-        toast.error(result.detail || "An error occurred. Please try again.", {
-          id: toastId,
-        });
-      }
-    } catch (error) {
-      toast.error("An error occurred. Please try again.", { id: toastId });
-      console.log(error);
-    }
-  };
-
   const handleRemoveTicker = async (ticker: string) => {
     const toastId = "watchlistToast";
     toast.loading("Removing from your watchlist...", { id: toastId });
@@ -107,8 +82,8 @@ export function Watchlist() {
       const response = await removeFromWatchList(ticker);
 
       if (response.ok) {
-        toast.success("Succesfully removed.", { id: toastId });
         fetchData();
+        toast.success("Succesfully removed.", { id: toastId });
       } else {
         const result = await response.json();
         toast.error(result.detail || "An error occurred. Please try again.", {
@@ -129,18 +104,7 @@ export function Watchlist() {
           <CardTitle>Add to Watchlist</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleFormSubmit} className="flex space-x-2">
-            <Input
-              type="text"
-              placeholder="Enter stock symbol"
-              value={newTicker}
-              onChange={(e) => setNewTicker(e.target.value)}
-            />
-            <Button type="submit">
-              <Plus className="mr-2 h-4 w-4" />
-              Add
-            </Button>
-          </form>
+          <AddWatchlistItemForm onSuccess={fetchData} />
         </CardContent>
       </Card>
 

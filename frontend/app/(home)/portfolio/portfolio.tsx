@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { fetchStockData, fetchUserDetails } from "@/lib/request";
 import { moneyFormat } from "@/lib/utils";
 import { StockData } from "@/types/stock";
 import { UserDetailsData } from "@/types/user";
@@ -64,40 +65,30 @@ export function Portfolio() {
     direction: "ascending" | "descending";
   } | null>(null);
 
+  const fetchData = async () => {
+    try {
+      // Only fetch user details once if not existed yet
+      const newUserData = userData ?? (await fetchUserDetails());
+      setUserData(newUserData);
+
+      const tickers = newUserData.holdings.map((holding) => holding.ticker);
+
+      const newStockData = await fetchStockData(tickers);
+      setStockData(newStockData);
+    } catch (err) {
+      setError("An error occurred while fetching data");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/users/details", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch user data");
-        }
-        const data: UserDetailsData = await response.json();
-        setUserData(data);
-
-        // Fetch real-time stock data for holdings
-        const stockPromises = data.holdings.map(async (holding) => {
-          const response = await fetch(`/api/stocks/${holding.ticker}/quote`);
-          const quote: StockData = await response.json();
-          return quote;
-        });
-
-        const stockDataResults = await Promise.all(stockPromises);
-        setStockData(stockDataResults);
-      } catch (err) {
-        setError("An error occurred while fetching data");
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
+
+    // Set up an interval to fetch data every 10 seconds
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   if (isLoading) return <SpinnerLoading />;

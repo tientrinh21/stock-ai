@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
-import { cn } from "@/lib/utils";
+import { cn, moneyFormat } from "@/lib/utils";
 import { MainNav } from "@/components/main-nav";
 import { MobileNav } from "@/components/mobile-nav";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -64,11 +64,11 @@ export function SiteHeader() {
                       <ChevronDownIcon className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent align="end">
                     <DropdownMenuItem className="group flex justify-center focus:bg-transparent">
                       <DollarSign className="mr-2 h-4 w-4 text-blue-500" />
                       <span className="font-semibold text-blue-500">
-                        {user?.balance}
+                        {moneyFormat(user?.balance ?? 0, "")}
                       </span>
                     </DropdownMenuItem>
                     <DropdownMenuItem

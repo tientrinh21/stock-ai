@@ -1,7 +1,9 @@
-import { Holding } from "@/types/holding";
+import { format } from "date-fns";
+
 import { StockData } from "@/types/stock";
 import { UserDetailsData } from "@/types/user";
 import { WatchlistItem } from "@/types/watchlist";
+import { TransactionFormSchema } from "@/types/form-schema";
 
 export const fetchUserDetails = async () => {
   const token = localStorage.getItem("token");
@@ -68,6 +70,27 @@ export const removeFromWatchList = async (ticker: string) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
+  });
+
+  return response;
+};
+
+export const createTransaction = async (values: TransactionFormSchema) => {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`/api/transactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      transaction_type: values.transactionType,
+      trade_date: format(values.date, "yyyy-MM-dd"),
+      price: values.price,
+      ticker: values.ticker,
+      shares: values.shares,
+    }),
   });
 
   return response;

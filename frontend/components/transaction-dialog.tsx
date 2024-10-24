@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Plus } from "lucide-react";
@@ -39,25 +37,14 @@ import {
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { toast } from "sonner";
-
-const formSchema = z.object({
-  transactionType: z.enum(["deposit", "withdraw", "buy", "sell"]),
-  ticker: z.union([
-    z.string().min(1, "Ticker is required").optional(),
-    z.literal("").transform(() => undefined),
-  ]),
-  date: z.date({
-    required_error: "Transaction date is required",
-  }),
-  price: z.number().positive("Amount must be positive"),
-  shares: z
-    .number()
-    .int()
-    .positive("Number of shares must be a positive integer")
-    .optional(),
-});
+import {
+  TransactionFormSchema,
+  transactionFormSchema,
+} from "@/types/form-schema";
+import { createTransaction } from "@/lib/request";
+import { ErrorResponse } from "@/types/error-response";
+import { useRouter } from "next/navigation";
 
 interface TransactionDialogProps {
   ticker?: string;
@@ -71,9 +58,10 @@ export function TransactionDialog({
   className,
 }: TransactionDialogProps) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<TransactionFormSchema>({
+    resolver: zodResolver(transactionFormSchema),
     defaultValues: {
       transactionType: ticker ? "buy" : "deposit",
       ticker: ticker || "",
@@ -95,48 +83,20 @@ export function TransactionDialog({
     }
   }, [watchTransactionType, form]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Handle the form submission here
+  async function onSubmit(values: TransactionFormSchema) {
     const toastId = "transactionToast";
-    toast.loading("Adding to your watchlist...", { id: toastId });
+    toast.loading("Making transaction...", { id: toastId });
 
     try {
-      const token = localStorage.getItem("token");
-      console.log(
-        JSON.stringify({
-          transaction_type: values.transactionType,
-          trade_date: format(values.date, "yyyy-MM-dd"),
-          price: values.price,
-          ticker: values.ticker,
-          shares: values.shares,
-        }),
-      );
-
-      const response = await fetch(`/api/transactions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          transaction_type: values.transactionType,
-          trade_date: format(values.date, "yyyy-MM-dd"),
-          price: values.price,
-          ticker: values.ticker,
-          shares: values.shares,
-        }),
-      });
+      const response = await createTransaction(values);
 
       if (response.ok) {
+        router.refresh();
         toast.success("Transaction completed.", { id: toastId });
-        window.location.reload();
         setOpen(false);
       } else {
-        const result = await response.json();
-        console.log(result);
-        toast.error("An error occurred. Please try again.", {
-          id: toastId,
-        });
+        const result: ErrorResponse = await response.json();
+        toast.error(result.detail, { id: toastId });
       }
     } catch (error) {
       toast.error("An error occurred. Please try again.", { id: toastId });
@@ -227,6 +187,9 @@ export function TransactionDialog({
                         <Input
                           placeholder="AAPL"
                           {...field}
+                          onChange={(e) => {
+                            field.onChange(e.target.value.toUpperCase());
+                          }}
                           disabled={!!ticker}
                         />
                       </FormControl>
@@ -245,6 +208,7 @@ export function TransactionDialog({
                           type="number"
                           placeholder="0"
                           {...field}
+                          min={0}
                           onChange={(e) =>
                             field.onChange(parseInt(e.target.value, 10))
                           }
@@ -316,6 +280,7 @@ export function TransactionDialog({
                       type="number"
                       placeholder="0.00"
                       {...field}
+                      min={0}
                       step={0.01}
                       onChange={(e) =>
                         field.onChange(parseFloat(e.target.value))
