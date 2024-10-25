@@ -57,21 +57,36 @@ def seed_data():
     db = SessionLocal()
 
     # You can uncomment this to fetch the S&P 500 tickers if needed
-    df_sp500 = pd.read_html(
-        "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    )[0]
-    tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
-
+    # df_sp500 = pd.read_html(
+    #     "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    # )[0]
+    # tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
+    #
     # Some ticker like "BRK.B" need to be mapped to "BRK-B"
-    tickers_sp500 = list(map(lambda x: x.replace(".", "-"), tickers_sp500))
-    tickers_sp500.append("^GSPC")  # Add S&P500 index
+    # tickers_sp500 = list(map(lambda x: x.replace(".", "-"), tickers_sp500))
+    # tickers_sp500.append("^GSPC")  # Add S&P500 index
 
     # Example tickers for testing
-    # tickers = ["AAPL", "AMZN", "MSFT", "INTC", "TSLA", "NVDA", "^GSPC"]
+    tickers = [
+        "AAPL",
+        "AMZN",
+        "MSFT",
+        "INTC",
+        "TSLA",
+        "NVDA",
+        "META",
+        "GOOGL",
+        "AVGO",
+        "JPM",
+        "COST",
+        "JNJ",
+        "NFLX",
+        "^GSPC",
+    ]
 
     print("\n======================\nFetching stock data...\n======================\n")
 
-    for ticker in tickers_sp500:
+    for ticker in tickers:
         insert_stock_data(ticker, db)
 
     print(
