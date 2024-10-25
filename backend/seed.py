@@ -1,6 +1,5 @@
-from operator import index
 import yfinance as yf
-# import pandas as pd
+import pandas as pd
 
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
@@ -27,7 +26,7 @@ def insert_stock_data(ticker: str, db: Session):
         )  # Fetch stock data from latest trade date
     else:
         print(f"No records of {ticker} found.")
-        data = yf.download(ticker, period="1y")  # Fetch the latest 1 year of stock data
+        data = yf.download(ticker, period="5y")  # Fetch the latest 5 year of stock data
 
     # Reset index
     data.reset_index(inplace=True)
@@ -58,18 +57,21 @@ def seed_data():
     db = SessionLocal()
 
     # You can uncomment this to fetch the S&P 500 tickers if needed
-    # df_sp500 = pd.read_html(
-    #     "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    # )[0]
-    # tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in S&P 500
-    # tickers = tickers_sp500.append("^GSPC")  # Add S&P500 index
+    df_sp500 = pd.read_html(
+        "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    )[0]
+    tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
+
+    # Some ticker like "BRK.B" need to be mapped to "BRK-B"
+    tickers_sp500 = list(map(lambda x: x.replace(".", "-"), tickers_sp500))
+    tickers_sp500.append("^GSPC")  # Add S&P500 index
 
     # Example tickers for testing
-    tickers = ["AAPL", "AMZN", "MSFT", "INTC", "TSLA", "^GSPC"]
+    # tickers = ["AAPL", "AMZN", "MSFT", "INTC", "TSLA", "NVDA", "^GSPC"]
 
     print("\n======================\nFetching stock data...\n======================\n")
 
-    for ticker in tickers:
+    for ticker in tickers_sp500:
         insert_stock_data(ticker, db)
 
     print(
