@@ -107,7 +107,7 @@ export function StockPriceViewer({ ticker }: StockPriceViewerProps) {
     try {
       const predictedData = await fetchStockPredictions(
         ticker,
-        "regression",
+        model,
         daysToPredict,
       );
       const predictions = predictedData.map((point) => ({
