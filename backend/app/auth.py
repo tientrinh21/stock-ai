@@ -24,7 +24,7 @@ def get_password_hash(password):
     pwd_bytes = password.encode("utf-8")
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password=pwd_bytes, salt=salt)
-    return hashed_password
+    return hashed_password.decode("utf-8")
 
 
 def create_access_token(data: dict):
