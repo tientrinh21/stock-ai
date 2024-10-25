@@ -1,3 +1,4 @@
+from operator import index
 import yfinance as yf
 # import pandas as pd
 
@@ -28,20 +29,19 @@ def insert_stock_data(ticker: str, db: Session):
         print(f"No records of {ticker} found.")
         data = yf.download(ticker, period="1y")  # Fetch the latest 1 year of stock data
 
-    # Reset index and rename the Date column
+    # Reset index
     data.reset_index(inplace=True)
-    data.rename(columns={"Date": "trade_date"}, inplace=True)
 
     # Insert fetched data into the corresponding table
     for _, row in data.iterrows():
         new_record = {
             "ticker": ticker,  # Include ticker in the record
-            "trade_date": row["trade_date"],
-            "open_price": row["Open"],
-            "high_price": row["High"],
-            "low_price": row["Low"],
-            "close_price": row["Close"],
-            "volume": row["Volume"],
+            "trade_date": row["Date"].iloc[0].date(),
+            "open_price": row["Open"][ticker],
+            "high_price": row["High"][ticker],
+            "low_price": row["Low"][ticker],
+            "close_price": row["Close"][ticker],
+            "volume": row["Volume"][ticker],
         }
 
         stmt = insert(Stock).values(new_record)
