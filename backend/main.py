@@ -19,7 +19,9 @@ from seed import seed_data
 
 df_sp500 = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
 tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
-tickers_sp500.append("^GSPC")
+
+# Some ticker like "BRK.B" need to be mapped to "BRK-B"
+tickers_sp500 = list(map(lambda x: x.replace(".", "-"), tickers_sp500))
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -53,7 +55,7 @@ def read_stock_data(
     ticker_upper = ticker.upper()
     query = db.query(models.Stock).filter(models.Stock.ticker == ticker_upper)
 
-    if ticker_upper not in tickers_sp500:
+    if (ticker_upper not in tickers_sp500) and (ticker_upper != "^GSPC"):
         raise HTTPException(status_code=400, detail="Ticker not found")
 
     # Set default end_date to today if not provided
@@ -84,15 +86,13 @@ def read_stock_data(
 def get_stock_quote(ticker: str):
     ticker_upper = ticker.upper()
 
-    if ticker_upper not in tickers_sp500:
+    if (ticker_upper not in tickers_sp500) and (ticker_upper != "^GSPC"):
         raise HTTPException(status_code=400, detail="Ticker not found")
 
     try:
         stock = yf.Ticker(ticker_upper)
         # Fetch summary information using yfinance
         quote_data = stock.info
-
-        print(quote_data)
 
         open = quote_data.get("regularMarketOpen", 0)
         previousClose = quote_data.get("regularMarketPreviousClose", 0)
@@ -110,6 +110,48 @@ def get_stock_quote(ticker: str):
             "change": change,
             "changePercent": changePercent,
         }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching stock data: {str(e)}"
+        )
+
+
+@app.get("/top-stocks")
+def get_top_stocks():
+    try:
+        spy = yf.Ticker("SPY")  # sp500 ETF
+        data = spy.funds_data
+        top_tickers = data.top_holdings.index.tolist()
+        print(top_tickers)
+
+        quotes = []
+
+        for ticker in top_tickers:
+            stock = yf.Ticker(ticker)
+            # Fetch summary information using yfinance
+            quote_data = stock.info
+
+            open = quote_data.get("regularMarketOpen", 0)
+            previousClose = quote_data.get("regularMarketPreviousClose", 0)
+            currentPrice = quote_data.get("currentPrice", 0)
+            change = round(currentPrice - previousClose, 2)
+            changePercent = round(change / previousClose * 100, 2)
+
+            quotes.append(
+                {
+                    "ticker": quote_data.get("symbol", ticker),
+                    "shortName": quote_data.get("shortName", ticker),
+                    "longName": quote_data.get("longName", ticker),
+                    "open": open,
+                    "previousClose": previousClose,
+                    "currentPrice": currentPrice,
+                    "change": change,
+                    "changePercent": changePercent,
+                }
+            )
+
+        return quotes
+
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error fetching stock data: {str(e)}"
