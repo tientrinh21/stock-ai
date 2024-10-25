@@ -1,11 +1,4 @@
-import {
-  ResponsiveContainer,
-  AreaChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Area,
-} from "recharts";
+import { AreaChart, CartesianGrid, XAxis, YAxis, Area } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -70,23 +63,21 @@ export function MarketIndexCard() {
           }}
           className="h-full w-full"
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={marketOverviewData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <ChartTooltip
-                content={<ChartTooltipContent className="w-[175px]" />}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="var(--color-value)"
-                fill="var(--color-value)"
-                fillOpacity={0.2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <AreaChart data={marketOverviewData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <ChartTooltip
+              content={<ChartTooltipContent className="w-[175px]" />}
+            />
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke="var(--color-value)"
+              fill="var(--color-value)"
+              fillOpacity={0.2}
+            />
+          </AreaChart>
         </ChartContainer>
       </CardContent>
     </Card>

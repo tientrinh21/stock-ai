@@ -15,17 +15,9 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { XAxis, YAxis, CartesianGrid, AreaChart, Area } from "recharts";
-import {
-  addDays,
-  subDays,
-  subMonths,
-  format,
-  differenceInDays,
-  parseISO,
-  subWeeks,
-} from "date-fns";
+import { addDays, subDays, format, parseISO } from "date-fns";
 import { CalendarIcon, SparklesIcon } from "lucide-react";
-import { cn, setStartDay } from "@/lib/utils";
+import { cn, getDaysToPredict, rangeToStartDate } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { availableModels, periodOptions } from "@/config/stock-prediction";
 import {
@@ -38,23 +30,6 @@ import {
 } from "./ui/select";
 import { fetchStockPrice } from "@/lib/request";
 import { LoadingCard } from "./loading-card";
-
-// Mock function to generate stock data
-const generateStockData = (startDate: Date, endDate: Date) => {
-  const data = [];
-  let currentDate = startDate;
-  let price = 100; // Starting price
-
-  while (currentDate <= endDate) {
-    price += (Math.random() - 0.5) * 5; // Random price change
-    data.push({
-      date: format(currentDate, "yyyy-MM-dd"),
-      price: parseFloat(price.toFixed(2)),
-    });
-    currentDate = addDays(currentDate, 1);
-  }
-  return data;
-};
 
 // Simple linear regression for price prediction
 const predictPrice = (
@@ -111,18 +86,34 @@ export function StockPriceViewer({
     from: subDays(new Date(), 30),
     to: new Date(),
   });
-  const [stockData, setStockData] = useState<
-    { date: string; price: number; predictedPrice?: number }[]
-  >([]);
   const [showPrediction, setShowPrediction] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const today = new Date();
+  const [startDate, setStartDay] = useState<Date | undefined>(
+    rangeToStartDate("1W"),
+  );
+  const [endDate, setEndDay] = useState<Date>(today);
+
+  const [stockData, setStockData] = useState<
+    { date: string; price: number; predictedPrice?: number }[]
+  >([]);
+
   const mappedStockData = stockData.map(({ date, price, predictedPrice }) => ({
     date,
     price: !isNaN(price) ? price : undefined,
     predictedPrice,
   }));
+
+  const filteredStockData = stockData.filter(({ date }) => {
+    const stockDate = new Date(date);
+    if (!startDate) return stockDate.getTime() <= endDate.getTime();
+
+    return (
+      stockDate.getTime() >= startDate.getTime() &&
+      stockDate.getTime() <= endDate.getTime()
+    );
+  });
 
   const fetchStockData = async () => {
     try {
@@ -140,50 +131,15 @@ export function StockPriceViewer({
   };
 
   useEffect(() => {
-    const startDate = setStartDay(timeRange, dateRange);
-    let endDate = today;
-
     setIsLoading(true);
     fetchStockData();
     setShowPrediction(false);
-  }, [timeRange, dateRange, ticker]);
+  }, [ticker]);
+
+  console.log(mappedStockData.slice(-5));
 
   const handlePrediction = () => {
-    let daysToPredict: number;
-
-    switch (timeRange) {
-      case "1W":
-        daysToPredict = 2;
-        break;
-      case "1M":
-        daysToPredict = 7;
-        break;
-      case "6M":
-        daysToPredict = 30;
-        break;
-      case "1Y":
-        daysToPredict = 60;
-        break;
-      case "All":
-        daysToPredict = 365;
-        break;
-      case "Custom":
-        daysToPredict = Math.min(
-          30,
-          Math.max(
-            7,
-            Math.floor(
-              differenceInDays(
-                dateRange?.to || today,
-                dateRange?.from || subDays(today, 30),
-              ) / 4,
-            ),
-          ),
-        );
-        break;
-      default:
-        daysToPredict = 0;
-    }
+    const daysToPredict = getDaysToPredict(timeRange);
 
     if (daysToPredict > 0) {
       const predictions = customPredictionModel
@@ -240,7 +196,7 @@ export function StockPriceViewer({
               showPrediction ||
               timeRange === "1D" ||
               (timeRange === "Custom" &&
-                format(today, "P") === format(dateRange?.to ?? today, "P"))
+                today.getTime() === dateRange?.to?.getTime())
             }
             className="group relative transform overflow-hidden bg-gradient-to-br from-blue-700 via-purple-700 to-pink-700 font-semibold text-white transition-all duration-200 ease-in-out hover:scale-110 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 hover:shadow-lg"
           >
@@ -257,7 +213,12 @@ export function StockPriceViewer({
               <Button
                 key={range}
                 variant={timeRange === range ? "default" : "outline"}
-                onClick={() => setTimeRange(range)}
+                onClick={() => {
+                  setTimeRange(range);
+                  setStartDay(rangeToStartDate(range));
+                  setEndDay(today);
+                  setShowPrediction(false);
+                }}
                 size={"sm"}
               >
                 {range}
@@ -277,11 +238,11 @@ export function StockPriceViewer({
                 {dateRange?.from ? (
                   dateRange.to ? (
                     <>
-                      {format(dateRange.from, "LLL dd, y")} -{" "}
-                      {format(dateRange.to, "LLL dd, y")}
+                      {format(dateRange.from, "yyyy-MM-dd")} ~{" "}
+                      {format(dateRange.to, "yyyy-MM-dd")}
                     </>
                   ) : (
-                    format(dateRange.from, "LLL dd, y")
+                    format(dateRange.from, "yyyy-MM-dd")
                   )
                 ) : (
                   <span>Pick a date range</span>
@@ -297,6 +258,9 @@ export function StockPriceViewer({
                 onSelect={(newDateRange) => {
                   setDateRange(newDateRange);
                   setTimeRange("Custom");
+                  setStartDay(dateRange?.from);
+                  setEndDay(dateRange?.to ?? today);
+                  setShowPrediction(false);
                 }}
                 numberOfMonths={2}
                 disabled={{ after: today }}
@@ -318,7 +282,7 @@ export function StockPriceViewer({
           }}
           className="aspect-auto h-[400px] w-full"
         >
-          <AreaChart data={mappedStockData}>
+          <AreaChart data={filteredStockData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
