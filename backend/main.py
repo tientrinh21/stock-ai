@@ -1,5 +1,6 @@
 import time
 import threading
+from pandas.core.api import DataFrame
 import uvicorn
 import yfinance as yf
 import pandas as pd
@@ -16,6 +17,10 @@ from app.database import engine, get_db
 from app import models, schemas, auth
 
 from seed import seed_data
+
+from ai_models.linear_regression import linear_model, linear_predict
+from ai_models._xgboost import xgboost_model, xgboost_predict
+from ai_models._prophet import prophet_model, prophet_predict
 
 df_sp500 = pd.read_html("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")[0]
 tickers_sp500 = df_sp500.Symbol.to_list()  # List of tickers in SP500
@@ -53,10 +58,11 @@ def read_stock_data(
     db: Session = Depends(get_db),
 ):
     ticker_upper = ticker.upper()
-    query = db.query(models.Stock).filter(models.Stock.ticker == ticker_upper)
 
     if (ticker_upper not in tickers_sp500) and (ticker_upper != "^GSPC"):
         raise HTTPException(status_code=400, detail="Ticker not found")
+
+    query = db.query(models.Stock).filter(models.Stock.ticker == ticker_upper)
 
     # Set default end_date to today if not provided
     if end_date is None:
@@ -116,8 +122,62 @@ def get_stock_quote(ticker: str):
         )
 
 
+@app.get("/stocks/{ticker}/predict")
+async def get_stock_prediction(
+    ticker: str, days_to_predict: int, model: str, db: Session = Depends(get_db)
+):
+    ticker_upper = ticker.upper()
+
+    if ticker_upper not in tickers_sp500:
+        raise HTTPException(status_code=400, detail="Ticker not found")
+
+    stocks = db.query(models.Stock).filter(models.Stock.ticker == ticker_upper).all()
+    if not stocks:
+        raise HTTPException(
+            status_code=404, detail="No stocks found for the given criteria"
+        )
+
+    data = [
+        {
+            "Datetime": stock.trade_date,
+            "Open": stock.open_price,
+            "High": stock.high_price,
+            "Low": stock.low_price,
+            "Close": stock.close_price,
+            "Adj Close": stock.close_price,  # Assuming Adj Close is the same as Close
+            "Volume": stock.volume,
+        }
+        for stock in stocks
+    ]
+
+    # Convert list of dictionaries to DataFrame
+    data = pd.DataFrame(list(data))
+
+    predicted = DataFrame()
+
+    # train data
+    if model == "regression":
+        _linear_model = linear_model(data)
+        predicted = linear_predict(_linear_model, days_to_predict, data)
+
+    if model == "xgboost":
+        _xgboost_model = xgboost_model(data)
+        predicted = xgboost_predict(_xgboost_model, days_to_predict, data)
+
+    if model == "prophet":
+        _prophet_model = prophet_model(data)
+        predicted = prophet_predict(_prophet_model, days_to_predict, data)
+
+    predicted = predicted.rename(
+        columns={"Datetime": "trade_date", "Close": "predicted_price"}
+    )
+
+    predictions = predicted.to_dict(orient="records")
+    return predictions
+
+
 @app.get("/top-stocks")
-def get_top_stocks():
+async def get_top_stocks():
     try:
         spy = yf.Ticker("SPY")  # sp500 ETF
         data = spy.funds_data
@@ -160,7 +220,7 @@ def get_top_stocks():
 
 # USER
 @app.post("/register", response_model=schemas.User)
-def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+async def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = (
         db.query(models.User).filter(models.User.username == user.username).first()
     )
@@ -180,7 +240,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @app.post("/token", response_model=schemas.Token)
-def login_for_access_token(
+async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
     user = (
@@ -249,7 +309,7 @@ async def read_users_details(
 
 # Execute a transaction (buy, sell, deposit, withdraw)
 @app.post("/transactions", response_model=schemas.Transaction)
-def execute_transaction(
+async def execute_transaction(
     transaction: schemas.TransactionCreate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -389,7 +449,7 @@ def execute_transaction(
 
 
 @app.get("/watchlist", response_model=List[schemas.Watchlist])
-def get_watchlist(
+async def get_watchlist(
     current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     watchlist = (
@@ -401,7 +461,7 @@ def get_watchlist(
 
 
 @app.post("/watchlist", response_model=schemas.Watchlist)
-def add_to_watchlist(
+async def add_to_watchlist(
     ticker: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -433,7 +493,7 @@ def add_to_watchlist(
 
 
 @app.delete("/watchlist/{ticker}")
-def delete_from_watchlist(
+async def delete_from_watchlist(
     ticker: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
