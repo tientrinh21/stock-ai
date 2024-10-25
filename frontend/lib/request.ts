@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, startOfYesterday } from "date-fns";
 
 import { StockPrice, StockQuote } from "@/types/stock";
 import { UserDetailsData } from "@/types/user";
@@ -32,8 +32,19 @@ export const fetchStockQuotes = async (tickers: string[]) => {
   return data;
 };
 
-export const fetchStockPrice = async (ticker: string) => {
-  const response = await fetch(`/api/stocks/${ticker}`);
+export const fetchStockPrice = async (
+  ticker: string,
+  startDate?: Date,
+  endDate?: Date,
+) => {
+  const querySymbol = startDate || endDate ? "?" : "";
+  const andSymbol = startDate && endDate ? "&" : "";
+  const startDateString = startDate ? format(startDate, "yyyy-MM-dd") : "";
+  const endDateString = endDate ? format(endDate, "yyyy-MM-dd") : "";
+
+  const queryString = `${querySymbol}${startDateString}${andSymbol}${endDateString}`;
+
+  const response = await fetch(`/api/stocks/${ticker}${queryString}`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch stock data");

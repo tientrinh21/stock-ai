@@ -14,14 +14,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts";
+import { XAxis, YAxis, CartesianGrid, AreaChart, Area } from "recharts";
 import {
   addDays,
   subDays,
@@ -30,16 +23,21 @@ import {
   differenceInDays,
   parseISO,
   subWeeks,
-  subYears,
 } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import {
-  NameType,
-  Payload,
-  ValueType,
-} from "recharts/types/component/DefaultTooltipContent";
+import { CalendarIcon, SparklesIcon } from "lucide-react";
+import { cn, setStartDay } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import { availableModels, periodOptions } from "@/config/stock-prediction";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { fetchStockPrice } from "@/lib/request";
+import { LoadingCard } from "./loading-card";
 
 // Mock function to generate stock data
 const generateStockData = (startDate: Date, endDate: Date) => {
@@ -79,8 +77,11 @@ const predictPrice = (
   const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
   const intercept = (sumY - slope * sumX) / n;
 
-  const predictions = [];
   const lastDataPoint = data[data.length - 1];
+  const predictions = [
+    { date: lastDataPoint.date, predictedPrice: lastDataPoint.price },
+  ];
+
   for (let i = 1; i <= daysToPredict; i++) {
     const predictedPrice = slope * (n + i - 1) + intercept;
     const predictedDate = addDays(parseISO(lastDataPoint.date), i);
@@ -94,7 +95,7 @@ const predictPrice = (
 };
 
 interface StockPriceViewerProps {
-  symbol: string;
+  ticker: string;
   customPredictionModel?: (
     data: { date: string; price: number }[],
     daysToPredict: number,
@@ -102,10 +103,10 @@ interface StockPriceViewerProps {
 }
 
 export function StockPriceViewer({
-  symbol,
+  ticker,
   customPredictionModel,
 }: StockPriceViewerProps) {
-  const [timeRange, setTimeRange] = useState("1D");
+  const [timeRange, setTimeRange] = useState("1W");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
     to: new Date(),
@@ -114,56 +115,57 @@ export function StockPriceViewer({
     { date: string; price: number; predictedPrice?: number }[]
   >([]);
   const [showPrediction, setShowPrediction] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const today = new Date();
+  const mappedStockData = stockData.map(({ date, price, predictedPrice }) => ({
+    date,
+    price: !isNaN(price) ? price : undefined,
+    predictedPrice,
+  }));
+
+  const fetchStockData = async () => {
+    try {
+      const stockPrice = await fetchStockPrice(ticker);
+      const stockData = stockPrice.map((point) => ({
+        date: point.trade_date,
+        price: point.close_price,
+        predictPrice: 0,
+      }));
+      setStockData(stockData);
+      setIsLoading(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
-    let startDate: Date;
-    let endDate = new Date();
+    const startDate = setStartDay(timeRange, dateRange);
+    let endDate = today;
 
-    switch (timeRange) {
-      case "1W":
-        startDate = subWeeks(endDate, 1);
-        break;
-      case "1M":
-        startDate = subMonths(endDate, 1);
-        break;
-      case "6M":
-        startDate = subMonths(endDate, 6);
-        break;
-      case "1Y":
-        startDate = subMonths(endDate, 12);
-        break;
-      case "All":
-        startDate = subYears(endDate, 3);
-        break;
-      case "Custom":
-        startDate = dateRange?.from || subDays(endDate, 30);
-        endDate = dateRange?.to || endDate;
-        break;
-      default:
-        startDate = subDays(endDate, 30);
-    }
-
-    const newData = generateStockData(startDate, endDate);
-    setStockData(newData);
+    setIsLoading(true);
+    fetchStockData();
     setShowPrediction(false);
-  }, [timeRange, dateRange]);
+  }, [timeRange, dateRange, ticker]);
 
   const handlePrediction = () => {
     let daysToPredict: number;
 
     switch (timeRange) {
       case "1W":
-        daysToPredict = 1;
+        daysToPredict = 2;
         break;
       case "1M":
         daysToPredict = 7;
         break;
       case "6M":
-      case "1Y":
         daysToPredict = 30;
         break;
+      case "1Y":
+        daysToPredict = 60;
+        break;
       case "All":
-        daysToPredict = 90;
+        daysToPredict = 365;
         break;
       case "Custom":
         daysToPredict = Math.min(
@@ -172,8 +174,8 @@ export function StockPriceViewer({
             7,
             Math.floor(
               differenceInDays(
-                dateRange?.to || new Date(),
-                dateRange?.from || subDays(new Date(), 30),
+                dateRange?.to || today,
+                dateRange?.from || subDays(today, 30),
               ) / 4,
             ),
           ),
@@ -211,48 +213,63 @@ export function StockPriceViewer({
     }
   };
 
-  const CustomTooltip = ({
-    active,
-    payload,
-    label,
-  }: {
-    active?: boolean;
-    payload?: Payload<ValueType, NameType>[];
-    label?: unknown;
-  }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const isPrediction = !isNaN(data.predictedPrice);
-      return (
-        <div className="rounded border border-gray-300 bg-white p-2 shadow">
-          <p className="label">{`Date: ${label}`}</p>
-          <p
-            className="value"
-            style={{
-              color: isPrediction
-                ? "var(--color-prediction)"
-                : "var(--color-price)",
-            }}
-          >
-            {`${isPrediction ? "Predicted " : ""}Price: $${isPrediction ? data.predictedPrice.toFixed(2) : data.price.toFixed(2)}`}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  if (isLoading) return <LoadingCard />;
 
   return (
-    <Card className="mx-auto w-full max-w-3xl">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>{symbol} Stock Price</CardTitle>
+    <Card className="w-full">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle>{ticker} Stock Price</CardTitle>
+        <div className="flex gap-2.5">
+          <Select>
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="Select a model" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {availableModels.map((model) => (
+                  <SelectItem key={model.value} value={model.value}>
+                    {model.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={handlePrediction}
+            disabled={
+              showPrediction ||
+              timeRange === "1D" ||
+              (timeRange === "Custom" &&
+                format(today, "P") === format(dateRange?.to ?? today, "P"))
+            }
+            className="group relative transform overflow-hidden bg-gradient-to-br from-blue-700 via-purple-700 to-pink-700 font-semibold text-white transition-all duration-200 ease-in-out hover:scale-110 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 hover:shadow-lg"
+          >
+            <SparklesIcon className="h-4 w-4" />
+            Predict
+          </Button>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <div className="mb-4 flex justify-between">
+          <div className="flex space-x-2">
+            {periodOptions.map((range) => (
+              <Button
+                key={range}
+                variant={timeRange === range ? "default" : "outline"}
+                onClick={() => setTimeRange(range)}
+                size={"sm"}
+              >
+                {range}
+              </Button>
+            ))}
+          </div>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
                 className={cn(
-                  "w-[280px] justify-start text-left font-normal",
+                  "h-8 w-[280px] justify-start text-left font-normal",
                   !dateRange && "text-muted-foreground",
                 )}
               >
@@ -271,7 +288,7 @@ export function StockPriceViewer({
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto" align="end">
               <Calendar
                 initialFocus
                 mode="range"
@@ -282,69 +299,53 @@ export function StockPriceViewer({
                   setTimeRange("Custom");
                 }}
                 numberOfMonths={2}
+                disabled={{ after: today }}
               />
             </PopoverContent>
           </Popover>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4 flex justify-between">
-          <div className="flex space-x-2">
-            {["1W", "1M", "6M", "1Y", "All"].map((range) => (
-              <Button
-                key={range}
-                variant={timeRange === range ? "default" : "outline"}
-                onClick={() => setTimeRange(range)}
-              >
-                {range}
-              </Button>
-            ))}
-          </div>
-          <Button
-            onClick={handlePrediction}
-            disabled={showPrediction || timeRange === "1D"}
-          >
-            Predict Future Prices
-          </Button>
-        </div>
+
         <ChartContainer
           config={{
             price: {
               label: "Stock Price",
               color: "hsl(var(--chart-1))",
             },
-            prediction: {
+            predictedPrice: {
               label: "Predicted Price",
               color: "hsl(var(--chart-2))",
             },
           }}
-          className="h-[300px]"
+          className="aspect-auto h-[400px] w-full"
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={stockData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line
+          <AreaChart data={mappedStockData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <ChartTooltip
+              content={<ChartTooltipContent className="w-[175px]" />}
+            />
+            <Area
+              type="monotone"
+              dataKey="price"
+              stroke="var(--color-price)"
+              strokeWidth={2}
+              fillOpacity={0.2}
+              connectNulls={false}
+            />
+            {showPrediction && (
+              <Area
                 type="monotone"
-                dataKey="price"
-                stroke="var(--color-price)"
+                dataKey="predictedPrice"
+                label="predictedPrice"
+                fill="var(--color-predictedPrice)"
+                stroke="var(--color-predictedPrice)"
+                strokeDasharray="3 3"
                 strokeWidth={2}
-                dot={false}
+                fillOpacity={0.2}
               />
-              {showPrediction && (
-                <Line
-                  type="monotone"
-                  dataKey="predictedPrice"
-                  stroke="var(--color-prediction)"
-                  strokeWidth={2}
-                  dot={false}
-                  connectNulls
-                />
-              )}
-            </LineChart>
-          </ResponsiveContainer>
+            )}
+          </AreaChart>
         </ChartContainer>
       </CardContent>
     </Card>

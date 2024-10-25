@@ -9,16 +9,16 @@ import { TopStocksCard } from "@/components/top-stocks-card";
 import { MarketIndexCard } from "@/components/market-index-card";
 
 export function Market() {
-  const [symbol, setSymbol] = useState("AAPL");
-  const [inputSymbol, setInputSymbol] = useState("AAPL");
+  const [ticker, setTicker] = useState("AAPL");
+  const [inputTicker, setInputTicker] = useState("AAPL");
 
   const handleSymbolChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputSymbol(e.target.value.toUpperCase());
+    setInputTicker(e.target.value.toUpperCase());
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSymbol(inputSymbol);
+    setTicker(inputTicker);
   };
 
   return (
@@ -30,25 +30,25 @@ export function Market() {
         <TopStocksCard />
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Stock Viewer</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="mb-4 flex space-x-2">
-            <Input
-              type="text"
-              value={inputSymbol}
-              onChange={handleSymbolChange}
-              placeholder="Enter stock symbol"
-            />
-            <Button type="submit">View Stock</Button>
-          </form>
-          <div>
-            <StockPriceViewer symbol={symbol} />
-          </div>
-        </CardContent>
-      </Card>
+      <div>
+        <Card>
+          <CardHeader className="space-y-3">
+            <CardTitle>Stock Viewer</CardTitle>
+            <form onSubmit={handleSubmit} className="mb-4 flex space-x-2">
+              <Input
+                type="text"
+                value={inputTicker}
+                onChange={handleSymbolChange}
+                placeholder="Enter stock symbol"
+              />
+              <Button type="submit">View Stock</Button>
+            </form>
+          </CardHeader>
+          <CardContent>
+            <StockPriceViewer ticker={ticker} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
