@@ -59,7 +59,7 @@ export function SiteHeader() {
               {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="text-white">
+                    <Button variant="ghost" className="text-primary">
                       {user?.username}
                       <ChevronDownIcon className="ml-2 h-4 w-4" />
                     </Button>
