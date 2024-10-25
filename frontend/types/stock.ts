@@ -19,3 +19,10 @@ export interface StockPrice {
   low_price: number;
   volume: number;
 }
+
+export interface StockPrediction {
+  trade_date: string;
+  predicted_price: number;
+  ticker: string;
+  model: string;
+}

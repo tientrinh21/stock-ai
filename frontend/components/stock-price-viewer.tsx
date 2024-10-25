@@ -14,8 +14,9 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { LoadingCard } from "@/components/loading-card";
 import { XAxis, YAxis, CartesianGrid, AreaChart, Area } from "recharts";
-import { addDays, subDays, format, parseISO } from "date-fns";
+import { subDays, format } from "date-fns";
 import { CalendarIcon, SparklesIcon } from "lucide-react";
 import { cn, getDaysToPredict, rangeToStartDate } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
@@ -27,61 +28,15 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import { fetchStockPrice } from "@/lib/request";
-import { LoadingCard } from "./loading-card";
-import { StockPrice } from "@/types/stock";
-
-// Simple linear regression for price prediction
-const predictPrice = (
-  data: { date: string; price: number }[],
-  daysToPredict: number,
-) => {
-  const n = data.length;
-  let sumX = 0,
-    sumY = 0,
-    sumXY = 0,
-    sumX2 = 0;
-
-  data.forEach((point, index) => {
-    sumX += index;
-    sumY += point.price;
-    sumXY += index * point.price;
-    sumX2 += index * index;
-  });
-
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
-
-  const lastDataPoint = data[data.length - 1];
-  const predictions = [
-    { date: lastDataPoint.date, predictedPrice: lastDataPoint.price },
-  ];
-
-  for (let i = 1; i <= daysToPredict; i++) {
-    const predictedPrice = slope * (n + i - 1) + intercept;
-    const predictedDate = addDays(parseISO(lastDataPoint.date), i);
-    predictions.push({
-      date: format(predictedDate, "yyyy-MM-dd"),
-      predictedPrice: parseFloat(predictedPrice.toFixed(2)),
-    });
-  }
-
-  return predictions;
-};
+} from "@/components/ui/select";
+import { fetchStockPredictions, fetchStockPrice } from "@/lib/request";
+import { toast } from "sonner";
 
 interface StockPriceViewerProps {
   ticker: string;
-  customPredictionModel?: (
-    data: { date: string; price: number }[],
-    daysToPredict: number,
-  ) => { date: string; predictedPrice: number }[];
 }
 
-export function StockPriceViewer({
-  ticker,
-  customPredictionModel,
-}: StockPriceViewerProps) {
+export function StockPriceViewer({ ticker }: StockPriceViewerProps) {
   const [timeRange, setTimeRange] = useState("1W");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
@@ -89,6 +44,8 @@ export function StockPriceViewer({
   });
   const [showPrediction, setShowPrediction] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [selectedModel, setSeletecedModel] = useState<string>();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -112,7 +69,7 @@ export function StockPriceViewer({
   }));
 
   const filteredStockData = mappedStockData.filter(
-    ({ date, price, predictedPrice }) => {
+    ({ date, predictedPrice }) => {
       const stockDate = new Date(date);
       stockDate.setHours(0, 0, 0, 0);
 
@@ -129,7 +86,6 @@ export function StockPriceViewer({
       const stockData = stockPrice.map((point) => ({
         date: point.trade_date,
         price: point.close_price,
-        predictPrice: 0,
       }));
 
       setStockData(stockData);
@@ -140,23 +96,57 @@ export function StockPriceViewer({
     }
   };
 
+  const fetchPredictionData = async (
+    ticker: string,
+    model: string,
+    daysToPredict: number,
+  ) => {
+    const toastId = "predictToast";
+    toast.loading("Making predictions...", { id: toastId });
+
+    try {
+      const predictedData = await fetchStockPredictions(
+        ticker,
+        "regression",
+        daysToPredict,
+      );
+      const predictions = predictedData.map((point) => ({
+        date: format(point.trade_date, "yyyy-MM-dd"),
+        predictedPrice: point.predicted_price,
+      }));
+
+      toast.success("Done! I hope you find it helpful ^^", { id: toastId });
+      return predictions;
+    } catch (err) {
+      toast.error("Something went wrong, please try again!", { id: toastId });
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     setIsLoading(true);
     fetchStockData();
     setShowPrediction(false);
   }, [ticker]);
 
-  const handlePrediction = () => {
+  const handlePrediction = async () => {
     const daysToPredict = getDaysToPredict(timeRange);
 
+    if (!selectedModel || selectedModel === "") {
+      toast.error("Please select a model first");
+      return;
+    }
+
     if (daysToPredict > 0) {
-      const predictions = customPredictionModel
-        ? customPredictionModel(originStockData, daysToPredict)
-        : predictPrice(originStockData, daysToPredict);
+      const predictions = await fetchPredictionData(
+        ticker,
+        selectedModel!,
+        daysToPredict,
+      );
 
       setStockData(() => {
         const newData = [...originStockData];
-        predictions.forEach((pred) => {
+        predictions?.forEach((pred) => {
           const index = newData.findIndex((d) => d.date === pred.date);
           if (index !== -1) {
             newData[index] = {
@@ -184,7 +174,14 @@ export function StockPriceViewer({
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>{ticker} Stock Price</CardTitle>
         <div className="flex gap-2.5">
-          <Select>
+          <Select
+            value={selectedModel}
+            onValueChange={(value) => {
+              setSeletecedModel(value);
+              setShowPrediction(false);
+              setStockData(originStockData);
+            }}
+          >
             <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="Select a model" />
             </SelectTrigger>

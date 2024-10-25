@@ -1,9 +1,10 @@
 import { format, startOfYesterday } from "date-fns";
 
-import { StockPrice, StockQuote } from "@/types/stock";
+import { StockPrediction, StockPrice, StockQuote } from "@/types/stock";
 import { UserDetailsData } from "@/types/user";
 import { WatchlistItem } from "@/types/watchlist";
 import { TransactionFormSchema } from "@/types/form-schema";
+import { availableModels } from "@/config/stock-prediction";
 
 export const fetchUserDetails = async () => {
   const token = localStorage.getItem("token");
@@ -51,6 +52,23 @@ export const fetchStockPrice = async (
   }
 
   const data: StockPrice[] = await response.json();
+  return data;
+};
+
+export const fetchStockPredictions = async (
+  ticker: string,
+  model: string,
+  daysToPredict: number,
+) => {
+  const response = await fetch(
+    `/api/stocks/${ticker}/predict?days_to_predict=${daysToPredict}&model=${model}`,
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch stock data");
+  }
+
+  const data: StockPrediction[] = await response.json();
   return data;
 };
 

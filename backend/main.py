@@ -160,17 +160,22 @@ async def get_stock_prediction(
         _linear_model = linear_model(data)
         predicted = linear_predict(_linear_model, days_to_predict, data)
 
-    if model == "xgboost":
+    elif model == "xgboost":
         _xgboost_model = xgboost_model(data)
         predicted = xgboost_predict(_xgboost_model, days_to_predict, data)
 
-    if model == "prophet":
+    elif model == "prophet":
         _prophet_model = prophet_model(data)
         predicted = prophet_predict(_prophet_model, days_to_predict, data)
+
+    else:
+        raise HTTPException(status_code=404, detail="No model found for prediction")
 
     predicted = predicted.rename(
         columns={"Datetime": "trade_date", "Close": "predicted_price"}
     )
+    predicted["ticker"] = ticker
+    predicted["model"] = model
 
     predictions = predicted.to_dict(orient="records")
     return predictions
@@ -520,7 +525,7 @@ async def delete_from_watchlist(
 def continuous_seed():
     while True:
         seed_data()
-        time.sleep(60 * 30)  # Run every 30 minutes
+        time.sleep(60 * 60)  # Run every hour
 
 
 def start_background_task():
