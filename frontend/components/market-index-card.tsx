@@ -6,21 +6,15 @@ import {
   YAxis,
   Area,
 } from "recharts";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { LoadingCard } from "@/components/loading-card";
 import { useEffect, useState } from "react";
 import { StockPrice } from "@/types/stock";
-import { Loader2 } from "lucide-react";
 import { fetchStockPrice } from "@/lib/request";
 import { StockChange } from "./stock-change";
 import { moneyFormat } from "@/lib/utils";
@@ -53,17 +47,7 @@ export function MarketIndexCard() {
   const secondLastPrice = marketIndex.at(-2)?.close_price ?? 0;
   const changePercent = (lastPrice / secondLastPrice - 1) * 100;
 
-  if (isLoading)
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Market Index</CardTitle>
-        </CardHeader>
-        <CardContent className="flex h-[300px] w-full items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
+  if (isLoading) return <LoadingCard />;
 
   return (
     <Card>

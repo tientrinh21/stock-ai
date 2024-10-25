@@ -9,7 +9,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
   ResponsiveContainer,
   LineChart,
@@ -25,6 +29,8 @@ import {
   format,
   differenceInDays,
   parseISO,
+  subWeeks,
+  subYears,
 } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -114,11 +120,8 @@ export function StockPriceViewer({
     let endDate = new Date();
 
     switch (timeRange) {
-      case "1D":
-        startDate = subDays(endDate, 1);
-        break;
-      case "5D":
-        startDate = subDays(endDate, 5);
+      case "1W":
+        startDate = subWeeks(endDate, 1);
         break;
       case "1M":
         startDate = subMonths(endDate, 1);
@@ -128,6 +131,9 @@ export function StockPriceViewer({
         break;
       case "1Y":
         startDate = subMonths(endDate, 12);
+        break;
+      case "All":
+        startDate = subYears(endDate, 3);
         break;
       case "Custom":
         startDate = dateRange?.from || subDays(endDate, 30);
@@ -146,7 +152,7 @@ export function StockPriceViewer({
     let daysToPredict: number;
 
     switch (timeRange) {
-      case "5D":
+      case "1W":
         daysToPredict = 1;
         break;
       case "1M":
@@ -155,6 +161,9 @@ export function StockPriceViewer({
       case "6M":
       case "1Y":
         daysToPredict = 30;
+        break;
+      case "All":
+        daysToPredict = 90;
         break;
       case "Custom":
         daysToPredict = Math.min(
@@ -281,7 +290,7 @@ export function StockPriceViewer({
       <CardContent>
         <div className="mb-4 flex justify-between">
           <div className="flex space-x-2">
-            {["1D", "5D", "1M", "6M", "1Y"].map((range) => (
+            {["1W", "1M", "6M", "1Y", "All"].map((range) => (
               <Button
                 key={range}
                 variant={timeRange === range ? "default" : "outline"}
@@ -316,7 +325,7 @@ export function StockPriceViewer({
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
-              <ChartTooltip content={<CustomTooltip />} />
+              <ChartTooltip content={<ChartTooltipContent />} />
               <Line
                 type="monotone"
                 dataKey="price"

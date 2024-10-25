@@ -28,7 +28,7 @@ export const fetchStockQuotes = async (tickers: string[]) => {
     return quote;
   });
 
-  const data = await Promise.all(stockPromises);
+  const data: StockQuote[] = await Promise.all(stockPromises);
   return data;
 };
 
@@ -40,6 +40,17 @@ export const fetchStockPrice = async (ticker: string) => {
   }
 
   const data: StockPrice[] = await response.json();
+  return data;
+};
+
+export const fetchTopStocks = async () => {
+  const response = await fetch(`/api/top-stocks`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch top stocks");
+  }
+
+  const data: StockQuote[] = await response.json();
   return data;
 };
 
