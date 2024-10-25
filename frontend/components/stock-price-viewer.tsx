@@ -30,6 +30,7 @@ import {
 } from "./ui/select";
 import { fetchStockPrice } from "@/lib/request";
 import { LoadingCard } from "./loading-card";
+import { StockPrice } from "@/types/stock";
 
 // Simple linear regression for price prediction
 const predictPrice = (
@@ -90,12 +91,17 @@ export function StockPriceViewer({
   const [isLoading, setIsLoading] = useState(true);
 
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const [startDate, setStartDay] = useState<Date | undefined>(
     rangeToStartDate("1W"),
   );
   const [endDate, setEndDay] = useState<Date>(today);
 
   const [stockData, setStockData] = useState<
+    { date: string; price: number; predictedPrice?: number }[]
+  >([]);
+  const [originStockData, setOriginStockData] = useState<
     { date: string; price: number; predictedPrice?: number }[]
   >([]);
 
@@ -105,15 +111,17 @@ export function StockPriceViewer({
     predictedPrice,
   }));
 
-  const filteredStockData = stockData.filter(({ date }) => {
-    const stockDate = new Date(date);
-    if (!startDate) return stockDate.getTime() <= endDate.getTime();
+  const filteredStockData = mappedStockData.filter(
+    ({ date, price, predictedPrice }) => {
+      const stockDate = new Date(date);
+      stockDate.setHours(0, 0, 0, 0);
 
-    return (
-      stockDate.getTime() >= startDate.getTime() &&
-      stockDate.getTime() <= endDate.getTime()
-    );
-  });
+      if (predictedPrice) return true;
+      if (!startDate) return stockDate <= endDate;
+
+      return stockDate >= startDate && stockDate <= endDate;
+    },
+  );
 
   const fetchStockData = async () => {
     try {
@@ -123,7 +131,9 @@ export function StockPriceViewer({
         price: point.close_price,
         predictPrice: 0,
       }));
+
       setStockData(stockData);
+      setOriginStockData(stockData);
       setIsLoading(false);
     } catch (err) {
       console.error(err);
@@ -136,18 +146,16 @@ export function StockPriceViewer({
     setShowPrediction(false);
   }, [ticker]);
 
-  console.log(mappedStockData.slice(-5));
-
   const handlePrediction = () => {
     const daysToPredict = getDaysToPredict(timeRange);
 
     if (daysToPredict > 0) {
       const predictions = customPredictionModel
-        ? customPredictionModel(stockData, daysToPredict)
-        : predictPrice(stockData, daysToPredict);
+        ? customPredictionModel(originStockData, daysToPredict)
+        : predictPrice(originStockData, daysToPredict);
 
-      setStockData((prevData) => {
-        const newData = [...prevData];
+      setStockData(() => {
+        const newData = [...originStockData];
         predictions.forEach((pred) => {
           const index = newData.findIndex((d) => d.date === pred.date);
           if (index !== -1) {
@@ -195,8 +203,7 @@ export function StockPriceViewer({
             disabled={
               showPrediction ||
               timeRange === "1D" ||
-              (timeRange === "Custom" &&
-                today.getTime() === dateRange?.to?.getTime())
+              (timeRange === "Custom" && (dateRange?.to ?? today) < today)
             }
             className="group relative transform overflow-hidden bg-gradient-to-br from-blue-700 via-purple-700 to-pink-700 font-semibold text-white transition-all duration-200 ease-in-out hover:scale-110 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 hover:shadow-lg"
           >
@@ -218,6 +225,7 @@ export function StockPriceViewer({
                   setStartDay(rangeToStartDate(range));
                   setEndDay(today);
                   setShowPrediction(false);
+                  setStockData(originStockData);
                 }}
                 size={"sm"}
               >
@@ -258,8 +266,8 @@ export function StockPriceViewer({
                 onSelect={(newDateRange) => {
                   setDateRange(newDateRange);
                   setTimeRange("Custom");
-                  setStartDay(dateRange?.from);
-                  setEndDay(dateRange?.to ?? today);
+                  setStartDay(newDateRange?.from);
+                  setEndDay(newDateRange?.to ?? today);
                   setShowPrediction(false);
                 }}
                 numberOfMonths={2}
@@ -295,7 +303,7 @@ export function StockPriceViewer({
               stroke="var(--color-price)"
               strokeWidth={2}
               fillOpacity={0.2}
-              connectNulls={false}
+              connectNulls={true}
             />
             {showPrediction && (
               <Area
@@ -307,6 +315,7 @@ export function StockPriceViewer({
                 strokeDasharray="3 3"
                 strokeWidth={2}
                 fillOpacity={0.2}
+                connectNulls={true}
               />
             )}
           </AreaChart>
