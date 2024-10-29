@@ -45,5 +45,10 @@ pnpm run dev
 - The `backend/` folder contain the backend code relating to Restful API server, implemented using [FastAPI](https://fastapi.tiangolo.com/), hosted with [fly.io](https://fly.io/), severless PostgreSQL with [Neon](https://neon.tech/).
 - The `frontend/` folder is responsible for the UI of the website, built with [Next.js](https://nextjs.org/), [TailwindCSS](https://tailwindcss.com/), and [shadcn/ui](https://ui.shadcn.com/). The backbone behind char components are [Rechart](https://recharts.org/)
 
+### Screenshots
+![image](https://github.com/user-attachments/assets/1cfdf04c-ceb2-4834-be3d-d28a912b32d9)
+![image](https://github.com/user-attachments/assets/8da49bac-f390-471b-8efd-f052559c4e7d)
+![image](https://github.com/user-attachments/assets/f9e06822-2d92-44f2-8ec1-b1c294ae1e40)
+
 ## Author
 - [Tien Trinh](https://github.com/tientrinh21)
